@@ -2,7 +2,8 @@
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 
 export async function POST(req: Request) {
   try {
