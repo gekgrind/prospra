@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 export async function POST(req: Request) {
@@ -27,15 +28,23 @@ export async function POST(req: Request) {
     let insights = "";
 
     try {
-      const { text } = await openai.generateText({
-        model: "gpt-4.1-mini",
-        maxTokens: 200,
+      const { text } = await generateText({
+        model: openai("gpt-4.1-mini"),
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an analytics engine. Produce TWO things:\n" +
+              "1. A 1–3 sentence summary of the exchange.\n" +
+              "2. Bullet-point insights, each starting with a dash (-).",
+          },
+          {
+            role: "user",
+            content: `User Message:\n${safeUserMessage}\n\nAI Response:\n${aiResponse}`,
+          },
+        ],
+        maxOutputTokens: 200,
         temperature: 0.3,
-        system:
-          "You are an analytics engine. Produce TWO things:\n" +
-          "1. A 1–3 sentence summary of the exchange.\n" +
-          "2. Bullet-point insights, each starting with a dash (-).",
-        prompt: `User Message:\n${safeUserMessage}\n\nAI Response:\n${aiResponse}`,
       });
 
       const result = (text || "").trim();
