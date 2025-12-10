@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 /**
- * WEBSITE SCORING RUBRIC
- * -----------------------------------------------------------------
- * We score the user's website across:
- * - SEO
- * - UX
- * - Offer Clarity
- * - Trust & Credibility
- * - Content Quality
- *
- * Scores: 0–100 each
- * Output must be JSON. No prose outside JSON.
+ * WEBSITE SCORING PROMPT
+ * (Preserving your exact JSON structure)
  */
 const SCORING_PROMPT = (text: string) => `
 You are Prospra's Website Intelligence Engine.
@@ -34,14 +22,14 @@ Analyze the website text below and produce a JSON object following this EXACT sh
     "overall": 0-100
   },
   "insights": {
-    "seo": ["bullet", "bullet", ...],
-    "ux": ["bullet", "bullet", ...],
-    "offer_clarity": ["bullet", "bullet", ...],
-    "trust": ["bullet", "bullet", ...],
-    "content_quality": ["bullet", "bullet", ...]
+    "seo": ["bullet", "bullet"],
+    "ux": ["bullet", "bullet"],
+    "offer_clarity": ["bullet", "bullet"],
+    "trust": ["bullet", "bullet"],
+    "content_quality": ["bullet", "bullet"]
   },
   "priorities": [
-    "Top 5 recommended actions ranked in order"
+    "Top recommended actions in order"
   ]
 }
 
@@ -58,7 +46,7 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
 
-    // 1) Auth
+    // Auth
     const {
       data: { user },
       error: userError,
@@ -68,7 +56,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // 2) Fetch website URL & content
+    // Load website URL
     const { data: profile } = await supabase
       .from("profiles")
       .select("website_url")
@@ -82,7 +70,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Pull full website text from embeddings table
+    // Fetch website text from embeddings table
     const { data: chunks, error: chunkError } = await supabase
       .from("website_brain_embeddings")
       .select("content")
@@ -97,19 +85,22 @@ export async function POST(req: Request) {
 
     const websiteText = chunks.map((c: any) => c.content).join("\n\n");
 
-    // 3) Run scoring with OpenAI
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    // ------------------------
+    // AI-SDK Scoring Engine
+    // ------------------------
+    const { text } = await generateText({
+      model: openai("gpt-4o"),
       messages: [
         { role: "system", content: "You are Prospra's Website Scoring Engine." },
         { role: "user", content: SCORING_PROMPT(websiteText) },
       ],
       temperature: 0.2,
+      maxOutputTokens: 800,
     });
 
-    const raw = completion.choices[0].message.content ?? "{}";
-
+    const raw = text.trim();
     let parsed;
+
     try {
       parsed = JSON.parse(raw);
     } catch (err) {
@@ -120,12 +111,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Save results to the user's profile
+    // Save results
     await supabase
       .from("profiles")
       .update({
         website_score: parsed.scores ?? null,
-        website_data: parsed, // full analysis & priorities
+        website_data: parsed,
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);
