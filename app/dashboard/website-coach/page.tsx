@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export default async function WebsiteCoachPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
