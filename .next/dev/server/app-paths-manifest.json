@@ -1,0 +1,6 @@
+{
+  "/api/onboarding-progress/route": "app/api/onboarding-progress/route.js",
+  "/auth/sign-up/page": "app/auth/sign-up/page.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/page": "app/page.js"
+}
