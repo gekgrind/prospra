@@ -18,7 +18,8 @@ export async function generateConversationTitle(
           content: userMessage,
         },
       ],
-      maxTokens: 20,
+      // The AI SDK uses 'maxOutputTokens', NOT 'max_tokens'
+      maxOutputTokens: 20,
     });
 
     return text.trim() || "New Conversation";
