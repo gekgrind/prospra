@@ -3,8 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default async function WebsiteInsightsPage() {
-  const supabase = createClient();
+  // ✅ FIX: Must await createClient()
+  const supabase = await createClient();
 
+  // ✅ Works now because supabase is no longer a Promise
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -84,3 +86,4 @@ export default async function WebsiteInsightsPage() {
     </div>
   );
 }
+
