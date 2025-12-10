@@ -217,7 +217,7 @@ export function ToolPill({ tool }: ToolPillProps) {
         <div className="mt-1">
           <Button
             asChild
-            size="xs"
+            size="sm"
             variant="outline"
             className="h-7 border-sky-500/40 bg-slate-950/80 text-[11px] text-sky-100 hover:bg-sky-900/50"
           >
