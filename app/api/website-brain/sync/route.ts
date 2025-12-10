@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { embed } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 // Simple scraper
@@ -66,26 +67,29 @@ export async function POST(req: Request) {
     // Chunk text
     const chunks = chunkText(text);
 
-    // Embed each chunk
+    // -------------------------------
+    // AI SDK Embeddings (CORRECT)
+    // -------------------------------
     for (const chunk of chunks) {
-      const embedding = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: chunk,
+      const { embedding } = await embed({
+        model: openai.embedding("text-embedding-3-small"),
+        value: chunk,
       });
-
-      const vector = embedding.data[0].embedding;
 
       await supabase.from("website_brain_embeddings").insert({
         user_id: user.id,
         url,
         chunk,
-        embedding: vector,
+        embedding,
       });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("WEBSITE BRAIN ERROR:", error);
-    return NextResponse.json({ error: "Failed to sync website" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to sync website" },
+      { status: 500 }
+    );
   }
 }
