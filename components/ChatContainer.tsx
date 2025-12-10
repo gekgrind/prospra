@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import LoadingDots from "./LoadingDots";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
 
 export default function ChatContainer() {
   const [messages, setMessages] = useState<any[]>([]);
