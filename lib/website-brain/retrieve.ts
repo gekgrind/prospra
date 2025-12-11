@@ -31,7 +31,7 @@ export async function getWebsiteBrainContext(
   userMessage: string
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 1) Create embedding of user's query
     const userEmbedding = await getEmbedding(userMessage);
