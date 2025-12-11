@@ -4,8 +4,8 @@
 "use client";
 
 import { useState } from "react";
-import ChatBubble from "@/components/chat/ChatBubble";
-import ChatInput from "@/components/chat/ChatInput";
+import ChatBubble from "@/components/ChatBubble";
+import ChatInput from "@/components/ChatInput";
 import { Sparkles } from "lucide-react";
 
 interface Message {
@@ -76,7 +76,7 @@ export default function MentorChatPage() {
 
       {/* Input */}
       <div className="mt-4">
-        <ChatInput onSend={sendMessage} isLoading={isLoading} />
+        <ChatInput onSend={sendMessage} />
       </div>
     </div>
   );
