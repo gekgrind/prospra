@@ -1,26 +1,33 @@
-// /app/api/goals/route.ts
+// app/api/goals/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false },
-});
+// Tell Next.js this route should always be dynamic
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.headers.get("x-user-id"); // you can swap this to your auth logic
-    if (!userId) {
-      return NextResponse.json({ error: "Missing user id" }, { status: 401 });
+    // ✅ Proper server-side Supabase client
+    const supabase = await createClient();
+
+    // ✅ Use Supabase auth instead of manual headers
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
     const { data, error } = await supabase
       .from("goals")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
@@ -28,21 +35,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ goals: data ?? [] });
   } catch (err) {
     console.error("[GOALS_GET_ERROR]", err);
-    return NextResponse.json({ error: "Failed to fetch goals" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch goals" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = req.headers.get("x-user-id");
-    if (!userId) {
-      return NextResponse.json({ error: "Missing user id" }, { status: 401 });
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json();
 
     const payload = {
-      user_id: userId,
+      user_id: user.id,
       type: body.type ?? "revenue",
       label: body.label ?? "New Goal",
       target_value: body.target_value ?? 0,
@@ -63,6 +82,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ goal: data });
   } catch (err) {
     console.error("[GOALS_POST_ERROR]", err);
-    return NextResponse.json({ error: "Failed to create goal" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create goal" },
+      { status: 500 }
+    );
   }
 }
