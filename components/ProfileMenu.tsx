@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfileMenu() {
@@ -41,12 +41,19 @@ export default function ProfileMenu() {
             Account Settings
           </Link>
 
+          <Link
+            href="/feedback"
+            className="block px-4 py-2 text-sm hover:bg-brandNavy hover:text-brandBlueLight transition"
+          >
+            Give Feedback
+          </Link>
+
           <hr className="border-brandBlue/30 my-1" />
 
           <button
             className="w-full px-4 py-2 flex items-center gap-2 text-sm text-red-300 hover:text-red-400 hover:bg-red-950/20 transition"
             onClick={() => {
-              window.location.href = "/auth/logout";
+              window.location.href = "/logout";
             }}
           >
             <LogOut size={16} />

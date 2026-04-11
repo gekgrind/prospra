@@ -19,6 +19,17 @@ Run these scripts in order:
    - Creates trigger function to auto-create profiles on user signup
    - Ensures every new user gets a profile record immediately
 
+<<<<<<< ours
+4. **`004_create_feedback_items.sql`** - Adds feedback + support triage storage
+   - Creates `feedback_items` table with typed category + status fields
+   - Adds RLS policies for user submission and admin triage
+   - Adds `is_admin` column to `profiles` if missing
+=======
+4. **`004_lifecycle_email_system.sql`** - Adds lifecycle email event logging
+   - Creates `email_events` table for lifecycle send outcomes
+   - Adds indexes + RLS policies for safe visibility and debugging
+>>>>>>> theirs
+
 ## Verification
 
 After running migrations, use:
@@ -62,5 +73,5 @@ If migrations fail:
 
 1. **Check permissions**: Make sure you have database admin access
 2. **Check syntax**: Copy/paste the entire file, don't run partial scripts
-3. **Check order**: Run in numerical order (001, 002, 003)
+3. **Check order**: Run in numerical order (001, 002, 003, 004)
 4. **Check logs**: View Supabase logs for detailed error messages

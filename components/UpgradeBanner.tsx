@@ -1,11 +1,17 @@
 "use client";
 
 import { Sparkles, Crown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { getAnalyticsAnonymousId, trackClientEvent } from "@/lib/analytics/client";
 
 export function UpgradeBanner() {
   const [usage, setUsage] = useState<any>(null);
+  const trackedImpression = useRef(false);
+  const remaining = usage?.remaining;
+  const limit = usage?.limit;
+  const shouldShow = !!usage && !usage.isPremium && (remaining <= 5 || remaining === 0);
 
   useEffect(() => {
     const load = async () => {
@@ -16,15 +22,20 @@ export function UpgradeBanner() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!shouldShow || trackedImpression.current || remaining == null || limit == null) return;
+    trackedImpression.current = true;
+    trackClientEvent(ANALYTICS_EVENTS.UPGRADE_CTA_VIEWED, {
+      anonymous_id: getAnalyticsAnonymousId(),
+      source: "usage_banner",
+      remaining,
+      limit,
+    });
+  }, [shouldShow, remaining, limit]);
+
   if (!usage || usage.isPremium) {
     return null; // Premium users don't see the banner
   }
-
-  const { remaining, limit } = usage;
-
-  const shouldShow =
-    remaining <= 5 || // Less than 5 messages left today
-    remaining === 0;  // Out of messages already
 
   if (!shouldShow) return null;
 
@@ -35,8 +46,8 @@ export function UpgradeBanner() {
       <div className="flex-1">
         <p className="font-semibold text-sm">
           {remaining === 0
-            ? "You're out of messages for today!"
-            : `Only ${remaining} messages left today!`}
+            ? "You're out of mentor messages for this month!"
+            : `Only ${remaining} mentor messages left this month!`}
         </p>
         <p className="text-xs opacity-90">
           Upgrade to Prospra Pro for unlimited mentoring + advanced business tools.
@@ -45,6 +56,14 @@ export function UpgradeBanner() {
 
       <Link
         href="/upgrade"
+        onClick={() =>
+          trackClientEvent(ANALYTICS_EVENTS.UPGRADE_CTA_CLICKED, {
+            anonymous_id: getAnalyticsAnonymousId(),
+            source: "usage_banner",
+            remaining,
+            limit,
+          })
+        }
         className="px-4 py-2 text-sm font-bold bg-black/20 rounded-lg hover:bg-black/30 transition"
       >
         Upgrade

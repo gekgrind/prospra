@@ -2,15 +2,24 @@
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { createClient } from "@/lib/supabase/client";
-const supabase = createClient();
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
-    const { userId, fileUrl } = await req.json();
+    const supabase = await createClient();
+    const { fileUrl } = await req.json();
 
     if (!fileUrl) {
       return NextResponse.json({ error: "Missing fileUrl" }, { status: 400 });
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -35,7 +44,7 @@ export async function POST(req: Request) {
 
     // Save analysis reference in database
     await supabase.from("uploads").insert({
-      user_id: userId,
+      user_id: user.id,
       file_url: fileUrl,
       file_type: "uploaded_file",
       summary: summary

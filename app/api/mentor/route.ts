@@ -1,149 +1,360 @@
-// =========================================
-//  PROSPRA MENTOR — FULL BRAIN STACK ROUTE
-//  (Corrected imports + stable OpenAI + Supabase SSR)
-// =========================================
-
+import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createServerClient } from "@supabase/ssr";
-import OpenAI from "openai";
 
 // Brain modules
 import { FIXED_RULES } from "@/lib/brain/fixed-rules";
 import { getRelevantResources } from "@/lib/brain/resources-brain";
-import { embed } from "@/lib/embeddings";
+import { enforceUsageLimit, recordUsageEvent } from "@/lib/monetization";
 
-// ---------- OPENAI SETUP ----------
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+type StoredMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+type MemoryRow = {
+  content?: unknown;
+  summary?: unknown;
+};
+
+const payloadSchema = z.object({
+  conversationId: z.string().min(1),
+  mode: z.string().optional().default("mentor"),
+  profile: z
+    .object({
+      fullName: z.string().optional().nullable(),
+      businessIdea: z.string().optional().nullable(),
+      industry: z.string().optional().nullable(),
+      experienceLevel: z.string().optional().nullable(),
+      goals: z.array(z.string()).optional().nullable(),
+    })
+    .optional()
+    .default({}),
 });
 
-// ---------- SUPABASE CLIENT ----------
-function createClient(request: Request) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.headers.get("cookie") ?? "";
-        },
-      },
-    }
-  );
+function parseCookieHeader(
+  raw: string | null
+): Array<{ name: string; value: string }> {
+  if (!raw) return [];
+
+  return raw
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((cookie) => {
+      const index = cookie.indexOf("=");
+
+      if (index === -1) {
+        return { name: cookie, value: "" };
+      }
+
+      return {
+        name: cookie.slice(0, index),
+        value: cookie.slice(index + 1),
+      };
+    });
 }
 
-// =========================================
-//             MAIN ROUTE HANDLER
-// =========================================
-export async function POST(req: Request) {
-  try {
-    const supabase = createClient(req);
-    const { messages } = await req.json();
+function createClient(request: Request) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (!messages || messages.length === 0) {
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase environment variables.");
+  }
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return parseCookieHeader(request.headers.get("cookie"));
+      },
+      setAll() {
+        // No-op in this route handler
+      },
+    },
+  });
+}
+
+function formatConversationForModel(messages: StoredMessage[]) {
+  return messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+}
+
+function buildMemoryBlock(memoryRows: MemoryRow[]) {
+  if (!memoryRows.length) return "No memory yet.";
+
+  return memoryRows
+    .map((row) => {
+      if (typeof row.content === "string" && row.content.trim()) {
+        return `- ${row.content.trim()}`;
+      }
+
+      if (typeof row.summary === "string" && row.summary.trim()) {
+        return `- ${row.summary.trim()}`;
+      }
+
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildRulesBlock(rules: unknown): string {
+  if (Array.isArray(rules)) {
+    return rules
+      .map((rule) => (typeof rule === "string" ? `- ${rule}` : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (typeof rules === "string") {
+    return rules;
+  }
+
+  return "Follow the platform's fixed mentoring rules.";
+}
+
+function buildSystemPrompt({
+  mode,
+  profile,
+  memoryBlock,
+  resourcesBlock,
+}: {
+  mode: string;
+  profile: {
+    fullName?: string | null;
+    businessIdea?: string | null;
+    industry?: string | null;
+    experienceLevel?: string | null;
+    goals?: string[] | null;
+  };
+  memoryBlock: string;
+  resourcesBlock: string;
+}) {
+  const rulesBlock = buildRulesBlock(FIXED_RULES);
+
+  return `
+You are Prospra, an elite startup mentor.
+
+Mode: ${mode}
+
+Founder Profile:
+Name: ${profile.fullName ?? "Unknown"}
+Idea: ${profile.businessIdea ?? "Unknown"}
+Industry: ${profile.industry ?? "Unknown"}
+Experience: ${profile.experienceLevel ?? "Unknown"}
+Goals: ${
+    Array.isArray(profile.goals) && profile.goals.length > 0
+      ? profile.goals.join(", ")
+      : "None"
+  }
+
+Memory:
+${memoryBlock}
+
+Resources:
+${resourcesBlock}
+
+Rules:
+${rulesBlock}
+
+Respond with:
+- Clear insight
+- Actionable next steps
+- Practical advice
+- No fluff
+`;
+}
+
+export async function POST(request: Request) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { role: "assistant", content: "I need something to respond to 😅" },
+        { error: "OPENAI_API_KEY not configured." },
+        { status: 503 }
+      );
+    }
+
+    const json = await request.json().catch(() => null);
+    const parsed = payloadSchema.safeParse(json);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request payload." },
         { status: 400 }
       );
     }
 
-    const userMessage = messages[messages.length - 1].content;
+    const { conversationId, mode, profile } = parsed.data;
 
-    // ---------- AUTH ----------
+    const supabase = createClient(request);
+
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
-    let isPremium = false;
-    let memoryRows = [];
-
-    if (user) {
-      // Check premium
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_premium, plan_tier, subscription_status")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      isPremium =
-        profile?.is_premium ||
-        profile?.subscription_status === "active" ||
-        profile?.plan_tier === "pro";
-
-      // Load personal memory
-      const { data: memory } = await supabase
-        .from("ai_memory")
-        .select("*")
-        .eq("user_id", user.id);
-
-      memoryRows = memory || [];
+    if (authError) {
+      console.error("AUTH_ERROR", authError);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ---------- RESOURCE BRAIN ----------
-    const resources = await getRelevantResources(userMessage);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const resourceContext =
-      resources?.length > 0
-        ? resources
-            .map((r: any) => `• ${r.title}\n${r.summary}`)
-            .join("\n\n")
-        : "No relevant curated resources found.";
+    const usageCheck = await enforceUsageLimit(
+      supabase,
+      user.id,
+      "mentor_message"
+    );
 
-    // ---------- MEMORY BRAIN ----------
-    const memoryContext =
-      memoryRows?.length > 0
-        ? memoryRows.map((m: any) => `• ${m.content}`).join("\n")
-        : "No memory stored yet.";
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          role: "assistant",
+          content: "You've hit your limit. Upgrade to keep going.",
+        },
+        { status: 429 }
+      );
+    }
 
-    // ---------- SYSTEM PROMPT ----------
-    const systemPrompt = `
-You are Prospra — the user's AI Mentor.
+    const { data: memory, error: memoryError } = await supabase
+      .from("ai_memory")
+      .select("*")
+      .eq("user_id", user.id);
 
-Follow these FIXED RULES:
-${FIXED_RULES}
+    if (memoryError) {
+      console.error("MEMORY_LOAD_ERROR", memoryError);
+    }
 
-Relevant curated resource knowledge:
-${resourceContext}
+    const memoryRows: MemoryRow[] = (memory as MemoryRow[]) ?? [];
 
-User-specific memory:
-${memoryContext}
+    const { data: conversation, error: conversationError } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-Reply with:
-- Supportive, realistic, modern entrepreneurial coaching
-- Slightly playful Gen-Z tone when appropriate
-- Step-by-step clarity
-- Zero hallucinations
-`;
+    if (conversationError) {
+      console.error("CONVERSATION_LOAD_ERROR", conversationError);
+      return NextResponse.json(
+        { error: "Failed to load conversation." },
+        { status: 500 }
+      );
+    }
 
-    // ---------- AI COMPLETION ----------
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      temperature: 0.8,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversation not found." },
+        { status: 404 }
+      );
+    }
+
+    const { data: recentMessages, error: messageError } = await supabase
+      .from("messages")
+      .select("role, content")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(24);
+
+    if (messageError) {
+      console.error("MESSAGE_LOAD_ERROR", messageError);
+      return NextResponse.json(
+        { error: "Failed to load messages." },
+        { status: 500 }
+      );
+    }
+
+    const orderedMessages = ((recentMessages ?? []) as StoredMessage[]).reverse();
+    const modelMessages = formatConversationForModel(orderedMessages);
+
+    if (!modelMessages.length) {
+      return NextResponse.json(
+        { error: "No messages found." },
+        { status: 400 }
+      );
+    }
+
+    let resourcesBlock = "No relevant resources.";
+
+    try {
+      const latestUserMessage =
+        [...modelMessages]
+          .reverse()
+          .find((message) => message.role === "user")?.content ?? "";
+
+      const resources = await getRelevantResources(latestUserMessage);
+
+      if (Array.isArray(resources) && resources.length > 0) {
+        resourcesBlock = resources
+          .map((r) => {
+            if (typeof r === "string" && r.trim()) {
+              return `- ${r.trim()}`;
+            }
+
+            if (r && typeof r === "object") {
+              const resource = r as {
+                title?: unknown;
+                summary?: unknown;
+                content?: unknown;
+              };
+
+              const title =
+                typeof resource.title === "string" && resource.title.trim()
+                  ? resource.title.trim()
+                  : "Resource";
+
+              const detail =
+                typeof resource.summary === "string" && resource.summary.trim()
+                  ? resource.summary.trim()
+                  : typeof resource.content === "string" && resource.content.trim()
+                  ? resource.content.trim()
+                  : "";
+
+              return detail ? `- ${title}: ${detail}` : `- ${title}`;
+            }
+
+            return "";
+          })
+          .filter(Boolean)
+          .join("\n");
+      }
+    } catch (error) {
+      console.error("RESOURCE_ERROR", error);
+    }
+
+    const systemPrompt = buildSystemPrompt({
+      mode,
+      profile,
+      memoryBlock: buildMemoryBlock(memoryRows),
+      resourcesBlock,
     });
 
-    const aiReply =
-      completion.choices?.[0]?.message?.content ??
-      "Oops, my brain glitched for a sec — try again?";
-
-    // ---------- RESPONSE ----------
-    return NextResponse.json({
-      role: "assistant",
-      content: aiReply,
+    await recordUsageEvent(supabase, user.id, "mentor_message", 1, {
+      conversationId,
+      mode,
+      route: "api/mentor",
     });
-  } catch (error: any) {
-    console.error("MENTOR ROUTE ERROR:", error);
+
+    const response = streamText({
+      model: openai("gpt-4o-mini"),
+      system: systemPrompt,
+      messages: modelMessages,
+      temperature: 0.7,
+    });
+
+    return response.toUIMessageStreamResponse();
+  } catch (error) {
+    console.error("MENTOR_ROUTE_ERROR", error);
 
     return NextResponse.json(
-      {
-        role: "assistant",
-        content:
-          "Oof… something broke in my thinking engine. Try again? If this keeps happening, we can debug it together.",
-        error: error?.message,
-      },
+      { error: "Failed to generate response." },
       { status: 500 }
     );
   }

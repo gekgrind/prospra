@@ -46,11 +46,10 @@ export function UsageBar({
   useEffect(() => {
     fetchCredits();
 
-    const interval = setInterval(fetchCredits, 20000); // refresh every 20s
+    const interval = setInterval(fetchCredits, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  // Loading state
   if (loading) {
     return (
       <div className="w-full h-6 bg-brandNavyDark border border-brandBlue/40 rounded-lg flex items-center justify-center">
@@ -67,7 +66,6 @@ export function UsageBar({
     );
   }
 
-  // Premium unlimited bar
   if (usage.isPremium) {
     return (
       <div className="w-full py-2 text-center text-brandBlueLight bg-brandNavyDark border border-brandBlue/40 rounded-lg">
@@ -76,7 +74,6 @@ export function UsageBar({
     );
   }
 
-  // Free user usage bar
   const remaining = Math.max(0, usage.limit - usage.used);
   const percent = Math.min(100, (usage.used / usage.limit) * 100);
   const limitReached = remaining <= 0;
@@ -85,7 +82,7 @@ export function UsageBar({
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-brandBlueLight/70 px-1">
         <span>
-          {limitReached ? "No messages left today" : `${remaining} messages left today`}
+          {limitReached ? "No messages left this month" : `${remaining} messages left this month`}
         </span>
         <span>
           {usage.used}/{usage.limit}
@@ -105,7 +102,7 @@ export function UsageBar({
 
       {limitReached && (
         <p className="text-xs text-brandOrangeLight text-center mt-1">
-          Daily limit reached — upgrade for unlimited access
+          Monthly limit reached — upgrade for more access
         </p>
       )}
     </div>

@@ -27,6 +27,17 @@ export type ToolResource = {
 
 export const toolsLibrary: ToolResource[] = [
   {
+    id: "prompt-lab",
+    name: "Prompt Lab",
+    description:
+      "AI-powered guided prompt engineering that turns founder intent into platform-optimized prompts.",
+    category: "ai",
+    status: "available",
+    internalRoute: "/dashboard/prompt-lab",
+    roadmapThemes: ["validation", "launch", "growth", "scale"],
+    tags: ["ai", "prompting", "execution"],
+  },
+  {
     id: "prospra-mentor",
     name: "Prospra Mentor",
     description:

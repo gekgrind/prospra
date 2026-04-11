@@ -13,13 +13,12 @@ import {
 } from "lucide-react";
 
 const HIDDEN_PATH_PREFIXES = [
-  "/auth",
   "/onboarding",
   "/welcome",
   "/getting-started",
 ];
 
-const HIDDEN_EXACT_PATHS = ["/", "/auth/login", "/auth/signup"];
+const HIDDEN_EXACT_PATHS = ["/", "/login", "/sign-up"];
 
 const navItems = [
   {

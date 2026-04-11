@@ -6,16 +6,19 @@ import { openai } from "@ai-sdk/openai";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
-    const { userMessage, aiResponse, userId, conversationId, messageId } =
+    const { userMessage, aiResponse, conversationId, messageId } =
       await req.json();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // ------------------------
     // VALIDATION
     // ------------------------
-    if (!userId || !conversationId || !aiResponse) {
+    if (!user?.id || !conversationId || !aiResponse) {
       return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
+        { error: user ? "Missing required fields" : "Unauthorized" },
+        { status: user ? 400 : 401 }
       );
     }
 
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
     // DATABASE INSERT
     // ------------------------
     await supabase.from("mentor_sync_logs").insert({
-      user_id: userId,
+      user_id: user.id,
       conversation_id: conversationId,
       message_id: messageId,
       user_message: safeUserMessage,
@@ -86,4 +89,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }
-

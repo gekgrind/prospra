@@ -1,24 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-
-function createClient(request: Request) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.headers.get("cookie") ?? "";
-        },
-      },
-    }
-  );
-}
+import { createRequestSupabaseClient } from "@/lib/supabase/request-client";
+import { SHARED_PROFILE_SELECT } from "@/lib/identity/profile";
 
 export async function PATCH(request: Request) {
-  const supabase = createClient(request);
+  const supabase = createRequestSupabaseClient(request);
 
-  // 🔐 Authenticate user
   const {
     data: { user },
     error: authError,
@@ -28,10 +14,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 📨 Parse incoming body
   const updates = await request.json();
 
-  // 🎯 Only allow fields that CAN be updated
   const allowedFields = [
     "full_name",
     "business_idea",
@@ -43,7 +27,7 @@ export async function PATCH(request: Request) {
     "memory_retention_days",
   ];
 
-  const cleanData: Record<string, any> = {};
+  const cleanData: Record<string, unknown> = {};
 
   for (const key of allowedFields) {
     if (key in updates) {
@@ -51,15 +35,13 @@ export async function PATCH(request: Request) {
     }
   }
 
-  // ⏱ Auto-update timestamp
   cleanData.updated_at = new Date().toISOString();
 
-  // 🚀 Update the profile
   const { data, error } = await supabase
     .from("profiles")
     .update(cleanData)
     .eq("id", user.id)
-    .select("*")
+    .select(SHARED_PROFILE_SELECT)
     .single();
 
   if (error) {
@@ -72,7 +54,6 @@ export async function PATCH(request: Request) {
     );
   }
 
-  // 🎉 Success
   return NextResponse.json({
     status: "success",
     profile: data,

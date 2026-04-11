@@ -47,7 +47,32 @@ ORDER BY ordinal_position;
 
 -- Expected: Should show all columns including new onboarding fields
 
--- 5. Test query - List all profiles with onboarding status
+-- 5. Verify feedback table + status/type columns
+SELECT
+  column_name,
+  data_type,
+  column_default,
+  is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'feedback_items'
+ORDER BY ordinal_position;
+
+-- Expected: feedback table columns including feedback_type, context, status
+
+-- 6. Verify feedback RLS policies
+SELECT
+  policyname,
+  cmd,
+  roles
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'feedback_items'
+ORDER BY policyname;
+
+-- Expected: user insert/select + admin select/update policies
+
+-- 7. Test query - List all profiles with onboarding status
 SELECT
   id,
   email,
@@ -60,3 +85,23 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 -- This shows recent profiles and their onboarding status
+
+-- 6. Check monetization profile columns
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'profiles'
+  AND column_name IN ('plan_tier', 'subscription_status', 'is_premium', 'premium_expires_at')
+ORDER BY column_name;
+
+-- 7. Check usage_events exists
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name = 'usage_events';
+
+-- 8. Recent usage events sample
+SELECT id, user_id, usage_type, amount, created_at
+FROM public.usage_events
+ORDER BY created_at DESC
+LIMIT 20;

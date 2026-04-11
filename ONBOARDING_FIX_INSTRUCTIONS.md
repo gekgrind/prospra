@@ -57,7 +57,7 @@ The following files have been updated:
 
 2. **Test signup flow**:
    ```
-   1. Navigate to /auth/sign-up
+   1. Navigate to /sign-up
    2. Create a new account
    3. Verify you're redirected to /onboarding
    4. Fill out all 6 steps

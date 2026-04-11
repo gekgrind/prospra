@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { trackServerEvent } from "@/lib/analytics/server";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const runtime = "edge"; // fast & cheap
 
@@ -72,6 +74,39 @@ async function getEntriesForPeriod(
   return data as JournalEntry[];
 }
 
+type MemoryItem = {
+  category: string;
+  content: string;
+  confidence?: number;
+  metadata?: Record<string, unknown>;
+};
+
+async function upsertMentorMemories(opts: {
+  supabase: any;
+  userId: string;
+  source: string;
+  items: MemoryItem[];
+}): Promise<void> {
+  const { supabase, userId, source, items } = opts;
+
+  if (!items.length) return;
+
+  const rows = items.map((item) => ({
+    user_id: userId,
+    source,
+    category: item.category,
+    content: item.content,
+    confidence: item.confidence ?? null,
+    metadata: item.metadata ?? {},
+  }));
+
+  try {
+    await supabase.from("mentor_memories").insert(rows);
+  } catch (error) {
+    console.error("Failed to upsert mentor memories:", error);
+  }
+}
+
 // Best-effort AI memory sync into ai_memory.
 // This will NEVER break the response; errors are logged & ignored.
 async function syncJournalMemory(opts: {
@@ -96,21 +131,22 @@ async function syncJournalMemory(opts: {
         ? 4
         : 3;
 
-    const memoryPayload = {
-      user_id: userId,
-      // Assuming your column is named "memory" + "importance"
-      // (matches how we usually set up ai_memory with you)
-      memory: `[journal/${mode}] ${trimmed}`,
-      importance,
-    };
-
-    const { error } = await supabase
-      .from("ai_memory")
-      .insert(memoryPayload);
-
-    if (error) {
-      console.error("AI memory sync failed:", error);
-    }
+    await upsertMentorMemories({
+      supabase,
+      userId,
+      source: "journal",
+      items: [
+        {
+          category: mode === "action_plan" || mode === "weekly_roadmap" ? "goal" : "blocker",
+          content: `[journal/${mode}] ${trimmed}`,
+          confidence: importance / 5,
+          metadata: {
+            cadence: mode === "weekly_recap" || mode === "monthly_recap" ? "recurring" : "evolving",
+            horizon: mode === "tomorrow_focus" ? "short_term" : "mid_term",
+          },
+        },
+      ],
+    });
   } catch (err) {
     console.error("AI memory sync crashed:", err);
   }
@@ -188,7 +224,7 @@ export async function POST(req: Request) {
       progressNotes,
       challenges,
       wins,
-      userId,
+      userId: requestedUserId,
     }: {
       mode: Mode;
       mood?: string | null;
@@ -198,7 +234,10 @@ export async function POST(req: Request) {
       userId: string;
     } = body;
 
-    if (!mode || !userId) {
+    if (!mode || !requestedUserId) {
+      await trackServerEvent(ANALYTICS_EVENTS.ACTION_PLAN_GENERATION_FAILED, {
+        reason: "missing_required_fields",
+      });
       return NextResponse.json(
         { error: "Missing required fields." },
         { status: 400 }
@@ -206,6 +245,23 @@ export async function POST(req: Request) {
     }
 
     const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = user.id;
+
+    if (requestedUserId && requestedUserId !== userId) {
+      return NextResponse.json(
+        { error: "User mismatch." },
+        { status: 403 }
+      );
+    }
 
     // Build a snapshot of the current entry (if any)
     const journalText = `
@@ -299,8 +355,26 @@ ${wins || "(empty)"}
       console.error("Memory sync background error:", err)
     );
 
+    if (mode === "action_plan") {
+      await trackServerEvent(ANALYTICS_EVENTS.ACTION_PLAN_GENERATED, {
+        user_id: userId,
+        output_length: text.length,
+      });
+    }
+
+    if (mode === "weekly_recap" || mode === "weekly_roadmap") {
+      await trackServerEvent(ANALYTICS_EVENTS.WEEKLY_REVIEW_GENERATED, {
+        user_id: userId,
+        review_type: mode,
+        history_entries: historyEntries.length,
+      });
+    }
+
     return NextResponse.json({ text });
   } catch (error: any) {
+    await trackServerEvent(ANALYTICS_EVENTS.ACTION_PLAN_GENERATION_FAILED, {
+      reason: "journal_ai_error",
+    });
     console.error("Journal AI Error:", error);
     return NextResponse.json(
       { error: error.message || "Unexpected error" },

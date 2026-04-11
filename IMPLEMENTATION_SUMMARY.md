@@ -53,7 +53,7 @@ Your app had three critical issues preventing users from completing onboarding:
 
 ### Successful Signup Flow
 ```
-1. User visits /auth/sign-up
+1. User visits /sign-up
 2. User enters email/password and submits
 3. Supabase creates auth.users record
 4. Database trigger fires automatically
@@ -111,7 +111,7 @@ You should see:
 ### 3. Test the Flow
 
 1. Clear your browser cookies/localStorage
-2. Visit `/auth/sign-up`
+2. Visit `/sign-up`
 3. Create a new test account
 4. Verify you land on `/onboarding`
 5. Fill out all steps
