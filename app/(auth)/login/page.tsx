@@ -127,7 +127,7 @@ function LoginPageContent() {
 
                 <div className="space-y-2">
                   <CardTitle className="text-3xl font-bold text-brandBlueLight sm:text-4xl">
-                    Welcome back Hello
+                    Welcome back
                   </CardTitle>
 
                   <CardDescription className="text-brandBlueLight/70">
