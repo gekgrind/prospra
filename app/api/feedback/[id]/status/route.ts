@@ -10,8 +10,8 @@ async function getAdminSupabase() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    return { supabase, user: null as const, isAdmin: false };
-  }
+  return { supabase, user: null, isAdmin: false };
+}
 
   const { data: profile } = await supabase
     .from("profiles")

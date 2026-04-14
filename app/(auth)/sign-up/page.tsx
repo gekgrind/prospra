@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -20,7 +20,9 @@ import {
   trackClientEvent,
 } from "@/lib/analytics/client";
 
-export default function SignUpPage() {
+const LOGIN_PATH_WITH_MESSAGE = "/login?message=check-email";
+
+function SignUpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -251,4 +253,23 @@ export default function SignUpPage() {
   );
 }
 
-const LOGIN_PATH_WITH_MESSAGE = "/login?message=check-email";
+function SignUpPageFallback() {
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-brandNavyDark">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#06152b_0%,#041224_100%)]" />
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+        <div className="w-full max-w-md rounded-[32px] border border-brandBlue/30 bg-[linear-gradient(180deg,rgba(5,19,38,0.88)_0%,rgba(4,16,32,0.94)_100%)] p-8 text-center text-sm text-brandBlueLight/80 shadow-[0_20px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+          Loading...
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<SignUpPageFallback />}>
+      <SignUpPageContent />
+    </Suspense>
+  );
+}

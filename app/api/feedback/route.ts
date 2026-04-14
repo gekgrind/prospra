@@ -15,7 +15,7 @@ async function getAuthenticatedUser() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    return { supabase, user: null as const };
+    return { supabase, user: null };
   }
 
   return { supabase, user };

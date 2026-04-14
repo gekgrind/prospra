@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -20,10 +20,10 @@ import {
   trackClientEvent,
 } from "@/lib/analytics/client";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +39,7 @@ export default function LoginPage() {
     return nextPath.startsWith("/") ? nextPath : "/dashboard";
   }, [nextPath]);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading) return;
 
@@ -52,10 +52,11 @@ export default function LoginPage() {
     try {
       trackClientEvent(ANALYTICS_EVENTS.AUTH_LOGIN_STARTED, { anonymous_id });
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const { data, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
       if (signInError) {
         trackClientEvent(ANALYTICS_EVENTS.AUTH_LOGIN_FAILED, {
@@ -78,7 +79,9 @@ export default function LoginPage() {
       router.replace(redirectPath);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Something went wrong during login.";
+        error instanceof Error
+          ? error.message
+          : "Something went wrong during login.";
 
       trackClientEvent(ANALYTICS_EVENTS.AUTH_LOGIN_FAILED, {
         anonymous_id,
@@ -201,5 +204,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-brandNavyDark text-sm text-brandBlueLight/80">
+          Loading...
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }
