@@ -22,6 +22,7 @@ jobs:
           username: ${{ secrets.PROSPRA_USERNAME }}
           key: ${{ secrets.PROSPRA_SSH_KEY }}
           port: ${{ secrets.PROSPRA_PORT }}
+          command_timeout: 30m
           script: |
             set -e
 
@@ -33,5 +34,5 @@ jobs:
             npm ci
             npm run build
 
-            pm2 restart prospra
+            pm2 restart prospra --update-env || pm2 start npm --name "prospra" -- start
             pm2 save
