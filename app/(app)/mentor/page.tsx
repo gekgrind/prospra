@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -315,7 +316,7 @@ function EmptyState({
   );
 }
 
-export default function MentorPage() {
+function MentorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
@@ -465,7 +466,7 @@ export default function MentorPage() {
     }
   }, []);
 
-   const loadActionPlan = useCallback(async (conversationId: string) => {
+  const loadActionPlan = useCallback(async (conversationId: string) => {
     try {
       setActionPlanError(null);
 
@@ -512,9 +513,7 @@ export default function MentorPage() {
       const payload = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(
-          payload?.error || "Couldn't generate outputs right now."
-        );
+        throw new Error(payload?.error || "Couldn't generate outputs right now.");
       }
 
       setConversationOutputs(payload?.outputs ?? null);
@@ -526,7 +525,6 @@ export default function MentorPage() {
       setGeneratingOutputs(false);
     }
   }, [generatingOutputs, loadActionPlan]);
-
 
   const syncActionPlanFromAssistant = useCallback(
     async (conversationId: string, assistantText: string) => {
@@ -1370,5 +1368,24 @@ export default function MentorPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+function MentorPageFallback() {
+  return (
+    <Card className="h-[calc(100vh-160px)] w-full border-brandBlue/40 bg-brandNavy p-6 text-brandBlueLight">
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-brandBlueLight/80">
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        Loading mentor workspace...
+      </div>
+    </Card>
+  );
+}
+
+export default function MentorPage() {
+  return (
+    <Suspense fallback={<MentorPageFallback />}>
+      <MentorPageContent />
+    </Suspense>
   );
 }
