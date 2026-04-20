@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
 import {
   Bot,
-  ChartLine,
   Compass,
+  Flame,
   FolderKanban,
+  Globe,
   LayoutDashboard,
-  MessageSquare,
   Settings,
 } from "lucide-react";
 
@@ -14,6 +14,7 @@ export type DashboardNavItem = {
   href: string;
   icon: ComponentType<{ className?: string }>;
   matchPrefixes?: string[];
+  badge?: string;
 };
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
@@ -30,16 +31,18 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     matchPrefixes: ["/mentor"],
   },
   {
-    label: "Conversations",
-    href: "/dashboard/sessions",
-    icon: MessageSquare,
-    matchPrefixes: ["/dashboard/sessions"],
+    label: "Site Strategist",
+    href: "/dashboard/web-intelligence",
+    icon: Globe,
+    matchPrefixes: ["/dashboard/web-intelligence"],
+    badge: "New",
   },
   {
-    label: "Insights",
-    href: "/dashboard/insights",
-    icon: ChartLine,
-    matchPrefixes: ["/dashboard/insights"],
+    label: "FounderFuel",
+    href: "/tools/founderfuel",
+    icon: Flame,
+    matchPrefixes: ["/tools/founderfuel"],
+    badge: "New",
   },
   {
     label: "Action Plans",
@@ -57,6 +60,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
 
 export const DASHBOARD_ACCOUNT_ITEM: DashboardNavItem = {
   label: "Settings",
-  href: "/dashboard/settings", // ✅ FIXED
+  href: "/dashboard/settings",
   icon: Settings,
+  matchPrefixes: ["/dashboard/settings"],
 };

@@ -1,10 +1,23 @@
 export type PromptPlatform =
-  | "claude"
+  | ""
   | "chatgpt"
+  | "claude"
   | "gemini"
-  | "midjourney"
   | "perplexity"
-  | "universal";
+  | "midjourney"
+  | "dalle_image_generation"
+  | "website_copy"
+  | "landing_page"
+  | "email_campaign"
+  | "blog_post"
+  | "instagram"
+  | "facebook"
+  | "linkedin"
+  | "x_twitter"
+  | "google_ads"
+  | "meta_ads"
+  | "youtube"
+  | "other";
 
 export type PromptScoreCategory = {
   label: "Clarity" | "Specificity" | "Context richness" | "Structure" | "Platform optimization";
@@ -32,6 +45,7 @@ export type PromptLabFormState = {
   toneSecondary: string[];
   noGoTone: string;
   platform: PromptPlatform;
+  customPlatform: string;
   platformVariant: string;
   outputLength: "short" | "medium" | "long";
   formatPreference: string;
@@ -45,7 +59,7 @@ export type PromptLabFormState = {
 export type GeneratedPrompt = {
   id: string;
   createdAt: string;
-  platform: PromptPlatform;
+  platform: string;
   prompt: string;
   techniques: string[];
   whyItWorks: string[];
@@ -73,12 +87,24 @@ export const TASK_TYPES = [
 export const AUDIENCE_TYPES = ["B2B founders", "Consumers", "SMBs", "Enterprise buyers", "Creators", "Freelancers", "Investors", "Other"];
 
 export const PLATFORM_OPTIONS: { value: PromptPlatform; label: string; badge: string }[] = [
-  { value: "claude", label: "Claude", badge: "XML structured" },
-  { value: "chatgpt", label: "ChatGPT", badge: "Markdown structured" },
+  { value: "chatgpt", label: "ChatGPT", badge: "Structured reasoning" },
+  { value: "claude", label: "Claude", badge: "Detailed strategy" },
   { value: "gemini", label: "Gemini", badge: "Concise structured" },
-  { value: "midjourney", label: "Midjourney", badge: "Image prompt syntax" },
-  { value: "perplexity", label: "Perplexity", badge: "Research framing" },
-  { value: "universal", label: "Universal", badge: "Cross-platform hybrid" },
+  { value: "perplexity", label: "Perplexity", badge: "Research-ready" },
+  { value: "midjourney", label: "Midjourney", badge: "Visual prompting" },
+  { value: "dalle_image_generation", label: "DALL·E / Image Generation", badge: "Image composition" },
+  { value: "website_copy", label: "Website Copy", badge: "Conversion copy" },
+  { value: "landing_page", label: "Landing Page", badge: "Headline + CTA" },
+  { value: "email_campaign", label: "Email Campaign", badge: "Sequence + conversion" },
+  { value: "blog_post", label: "Blog Post", badge: "Depth + structure" },
+  { value: "instagram", label: "Instagram", badge: "Short-form social" },
+  { value: "facebook", label: "Facebook", badge: "Community + engagement" },
+  { value: "linkedin", label: "LinkedIn", badge: "Professional social" },
+  { value: "x_twitter", label: "X / Twitter", badge: "Punchy concise" },
+  { value: "google_ads", label: "Google Ads", badge: "Performance copy" },
+  { value: "meta_ads", label: "Meta Ads", badge: "Paid social ads" },
+  { value: "youtube", label: "YouTube", badge: "Retention scripting" },
+  { value: "other", label: "Other", badge: "Custom destination" },
 ];
 
 export const initialPromptLabFormState: PromptLabFormState = {
@@ -94,8 +120,9 @@ export const initialPromptLabFormState: PromptLabFormState = {
   tonePrimary: "Strategic and clear",
   toneSecondary: ["Empathetic"],
   noGoTone: "",
-  platform: "chatgpt",
-  platformVariant: "gpt-4.1",
+  platform: "",
+  customPlatform: "",
+  platformVariant: "",
   outputLength: "medium",
   formatPreference: "Step-by-step output",
   includeExamples: true,

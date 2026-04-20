@@ -61,7 +61,8 @@ export default function PromptLabClient() {
   }, [generated?.id, generated?.prompt]);
 
   const platformBadge = useMemo(
-    () => PLATFORM_OPTIONS.find((option) => option.value === (generated?.platform ?? state.platform)),
+    () => PLATFORM_OPTIONS.find((option) => option.value === (generated?.platform as PromptLabFormState["platform"] | undefined) || option.label === generated?.platform)
+      ?? PLATFORM_OPTIONS.find((option) => option.value === state.platform),
     [generated?.platform, state.platform],
   );
 
@@ -106,19 +107,19 @@ export default function PromptLabClient() {
   };
 
   return (
-    <div className={`${oswald.variable} ${josefin.variable} ${jetbrains.variable} grid gap-6 xl:grid-cols-[1.15fr_1fr]`}>
-      <Card className="border-slate-700/60 bg-slate-900/65 shadow-2xl shadow-sky-950/20">
-        <CardHeader>
-          <CardTitle className="font-[family-name:var(--font-oswald)] text-3xl tracking-wide text-white">Prompt Lab</CardTitle>
+    <div className={`${oswald.variable} ${josefin.variable} ${jetbrains.variable} grid gap-8 xl:grid-cols-[1.15fr_1fr]`}>
+      <Card className="border border-slate-800/70 bg-slate-950/85 shadow-2xl shadow-black/30">
+        <CardHeader className="space-y-3 pb-5">
+          <CardTitle className="font-[family-name:var(--font-oswald)] text-3xl tracking-wide text-white md:text-[2rem]">Prompt Lab</CardTitle>
           <CardDescription className="font-[family-name:var(--font-josefin)] text-slate-300">
             Guided prompt engineering for founders. Define intent once, generate premium prompts for any platform.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Accordion type="multiple" defaultValue={["task", "audience"]} className="space-y-2">
-            <AccordionItem value="task" className="rounded-lg border border-slate-700/70 px-4">
+        <CardContent className="space-y-6">
+          <Accordion type="multiple" defaultValue={["task", "audience"]} className="space-y-3">
+            <AccordionItem value="task" className="rounded-xl border border-slate-800/80 bg-slate-900/35 px-4">
               <AccordionTrigger className="font-semibold text-slate-100">1. Task</AccordionTrigger>
-              <AccordionContent className="space-y-3">
+              <AccordionContent className="space-y-4 pt-1">
                 <Label>Task type *</Label>
                 <Select value={state.taskType} onValueChange={(value) => dispatch({ type: "SET_FIELD", field: "taskType", value })}>
                   <SelectTrigger><SelectValue placeholder="Select task" /></SelectTrigger>
@@ -126,15 +127,36 @@ export default function PromptLabClient() {
                 </Select>
                 {state.taskType === "Other" && <Input placeholder="Describe task type" value={state.taskTypeOther} onChange={(e) => dispatch({ type: "SET_FIELD", field: "taskTypeOther", value: e.target.value })} />}
                 <Textarea placeholder="Objective *" value={state.objective} onChange={(e) => dispatch({ type: "SET_FIELD", field: "objective", value: e.target.value })} />
+                <div className="space-y-2 rounded-lg border border-slate-600/80 bg-slate-900/80 p-3">
+                  <Label className="text-slate-100">Platform / Destination</Label>
+                  <Select value={state.platform} onValueChange={(value) => dispatch({ type: "SET_FIELD", field: "platform", value })}>
+                    <SelectTrigger className="border-slate-600 bg-slate-950/60">
+                      <SelectValue placeholder="Select platform / destination (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PLATFORM_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.platform === "other" && (
+                    <Input
+                      placeholder="Custom Platform / Destination"
+                      value={state.customPlatform}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "customPlatform", value: e.target.value })}
+                    />
+                  )}
+                  {errors.customPlatform && <p className="text-xs text-rose-300">{errors.customPlatform}</p>}
+                </div>
                 <Textarea placeholder="Desired deliverable *" value={state.deliverable} onChange={(e) => dispatch({ type: "SET_FIELD", field: "deliverable", value: e.target.value })} />
                 <Textarea placeholder="Constraints, limits, must-haves" value={state.constraints} onChange={(e) => dispatch({ type: "SET_FIELD", field: "constraints", value: e.target.value })} />
                 {errors.objective && <p className="text-xs text-rose-300">{errors.objective}</p>}
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="audience" className="rounded-lg border border-slate-700/70 px-4">
+            <AccordionItem value="audience" className="rounded-xl border border-slate-800/80 bg-slate-900/35 px-4">
               <AccordionTrigger className="font-semibold text-slate-100">2. Audience</AccordionTrigger>
-              <AccordionContent className="space-y-3">
+              <AccordionContent className="space-y-4 pt-1">
                 <Label>Audience type *</Label>
                 <Select value={state.audienceType} onValueChange={(value) => dispatch({ type: "SET_FIELD", field: "audienceType", value })}>
                   <SelectTrigger><SelectValue placeholder="Select audience" /></SelectTrigger>
@@ -148,7 +170,7 @@ export default function PromptLabClient() {
                     ["warm", "Warm"],
                     ["hot", "Hot"],
                   ].map(([value, label]) => (
-                    <button key={value} type="button" onClick={() => dispatch({ type: "SET_FIELD", field: "awarenessLevel", value })} className={`rounded-md border px-3 py-2 text-sm transition ${state.awarenessLevel === value ? "border-sky-400 bg-sky-500/15 text-sky-200" : "border-slate-700 text-slate-300 hover:bg-slate-800"}`}>
+                    <button key={value} type="button" onClick={() => dispatch({ type: "SET_FIELD", field: "awarenessLevel", value })} className={`rounded-lg border px-3 py-2 text-sm transition ${state.awarenessLevel === value ? "border-sky-400/75 bg-sky-500/10 text-sky-200 shadow-sm shadow-sky-900/60" : "border-slate-700/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800/70"}`}>
                       {label}
                     </button>
                   ))}
@@ -156,13 +178,13 @@ export default function PromptLabClient() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="tone" className="rounded-lg border border-slate-700/70 px-4">
+            <AccordionItem value="tone" className="rounded-xl border border-slate-800/80 bg-slate-900/35 px-4">
               <AccordionTrigger className="font-semibold text-slate-100">3. Tone</AccordionTrigger>
-              <AccordionContent className="space-y-3">
+              <AccordionContent className="space-y-4 pt-1">
                 <Input placeholder="Primary tone" value={state.tonePrimary} onChange={(e) => dispatch({ type: "SET_FIELD", field: "tonePrimary", value: e.target.value })} />
                 <div className="flex flex-wrap gap-2">
                   {SECONDARY_TONES.map((tone) => (
-                    <button key={tone} type="button" onClick={() => dispatch({ type: "TOGGLE_CHIP", field: "toneSecondary", value: tone })} className={`rounded-full border px-3 py-1 text-xs transition ${state.toneSecondary.includes(tone) ? "border-amber-300 bg-amber-400/20 text-amber-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`}>
+                    <button key={tone} type="button" onClick={() => dispatch({ type: "TOGGLE_CHIP", field: "toneSecondary", value: tone })} className={`rounded-full border px-3 py-1 text-xs transition ${state.toneSecondary.includes(tone) ? "border-amber-300/75 bg-amber-400/10 text-amber-100" : "border-slate-700/80 text-slate-300 hover:border-slate-500"}`}>
                       {tone}
                     </button>
                   ))}
@@ -171,23 +193,8 @@ export default function PromptLabClient() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="platform" className="rounded-lg border border-slate-700/70 px-4">
-              <AccordionTrigger className="font-semibold text-slate-100">4. Platform</AccordionTrigger>
-              <AccordionContent className="space-y-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {PLATFORM_OPTIONS.map((option) => (
-                    <button key={option.value} type="button" onClick={() => dispatch({ type: "SET_FIELD", field: "platform", value: option.value })} className={`rounded-md border px-3 py-2 text-left ${state.platform === option.value ? "border-emerald-400 bg-emerald-500/15" : "border-slate-700"}`}>
-                      <p className="text-sm text-slate-100">{option.label}</p>
-                      <p className="text-xs text-slate-400">{option.badge}</p>
-                    </button>
-                  ))}
-                </div>
-                <Input placeholder="Model/variant" value={state.platformVariant} onChange={(e) => dispatch({ type: "SET_FIELD", field: "platformVariant", value: e.target.value })} />
-              </AccordionContent>
-            </AccordionItem>
-
             <AccordionItem value="advanced" className="rounded-lg border border-slate-700/70 px-4">
-              <AccordionTrigger className="font-semibold text-slate-100">5. Advanced</AccordionTrigger>
+              <AccordionTrigger className="font-semibold text-slate-100">4. Advanced</AccordionTrigger>
               <AccordionContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Select value={state.outputLength} onValueChange={(value) => dispatch({ type: "SET_FIELD", field: "outputLength", value })}>
@@ -200,6 +207,7 @@ export default function PromptLabClient() {
                   </Select>
                   <Input placeholder="Format preference" value={state.formatPreference} onChange={(e) => dispatch({ type: "SET_FIELD", field: "formatPreference", value: e.target.value })} />
                 </div>
+                <Input placeholder="Model/variant (optional)" value={state.platformVariant} onChange={(e) => dispatch({ type: "SET_FIELD", field: "platformVariant", value: e.target.value })} />
                 <Textarea placeholder="Success criteria" value={state.successCriteria} onChange={(e) => dispatch({ type: "SET_FIELD", field: "successCriteria", value: e.target.value })} />
                 <Textarea placeholder="Additional context" value={state.contextDump} onChange={(e) => dispatch({ type: "SET_FIELD", field: "contextDump", value: e.target.value })} />
                 <div className="flex flex-wrap items-center gap-5">
@@ -211,7 +219,7 @@ export default function PromptLabClient() {
             </AccordionItem>
           </Accordion>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 pt-1">
             <Button onClick={() => onGenerate("generate")} disabled={loading} className="bg-gradient-to-r from-sky-600 to-indigo-500 text-white hover:shadow-lg hover:shadow-sky-500/30">
               <Sparkles className="mr-2 h-4 w-4" /> {loading ? "Generating..." : "Generate prompt"}
             </Button>
@@ -222,21 +230,24 @@ export default function PromptLabClient() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        <Card className="border-slate-700/60 bg-slate-900/75">
-          <CardHeader className="flex flex-row items-start justify-between gap-2">
+      <div className="space-y-5">
+        <Card className="border border-slate-800/70 bg-slate-950/85 shadow-2xl shadow-black/20">
+          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-4">
             <div>
-              <CardTitle className="font-[family-name:var(--font-oswald)] text-2xl text-white">Output</CardTitle>
-              <CardDescription className="text-slate-300">Platform-optimized prompt with founder-ready structure.</CardDescription>
+              <CardTitle className="font-[family-name:var(--font-oswald)] text-2xl text-white md:text-[1.75rem]">Output</CardTitle>
+              <CardDescription className="mt-1 text-slate-300">Platform-optimized prompt with founder-ready structure.</CardDescription>
             </div>
-            {platformBadge && <Badge className="bg-slate-800 text-sky-200">{platformBadge.label} · {platformBadge.badge}</Badge>}
+            {platformBadge && <Badge className="border border-slate-700/70 bg-slate-900 text-sky-200">{platformBadge.label} · {platformBadge.badge}</Badge>}
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {!generated ? (
-              <div className="rounded-lg border border-dashed border-slate-700 p-8 text-sm text-slate-400">Define your intent on the left and generate your first prompt.</div>
+              <div className="rounded-xl border border-dashed border-slate-700/80 bg-slate-900/35 p-10 text-center">
+                <p className="text-sm font-medium text-slate-200">No prompt generated yet.</p>
+                <p className="mt-2 text-sm text-slate-400">Define your intent on the left, then generate your first founder-ready prompt.</p>
+              </div>
             ) : (
-              <div className="space-y-4">
-                <pre className="max-h-[390px] overflow-auto rounded-lg border border-slate-700 bg-slate-950/80 p-4 text-xs text-slate-200 font-[family-name:var(--font-jetbrains)]">{typedPrompt}</pre>
+              <div className="space-y-5">
+                <pre className="max-h-[390px] overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs leading-relaxed text-slate-200 font-[family-name:var(--font-jetbrains)]">{typedPrompt}</pre>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={async () => {
                     await navigator.clipboard.writeText(generated.prompt);
@@ -245,12 +256,12 @@ export default function PromptLabClient() {
                   }}><Copy className="mr-1 h-4 w-4" /> {copyDone ? "Copied" : "Copy"}</Button>
                   <Button size="sm" variant="outline" onClick={() => onGenerate("generate")}><RotateCcw className="mr-1 h-4 w-4" /> Regenerate</Button>
                 </div>
-                <div className="space-y-2 rounded-lg border border-emerald-700/40 bg-emerald-900/10 p-3">
+                <div className="space-y-2 rounded-xl border border-emerald-700/35 bg-emerald-900/10 p-3.5">
                   <p className="text-sm font-semibold text-emerald-200">Why this prompt works</p>
                   <ul className="list-disc space-y-1 pl-5 text-xs text-emerald-100/90">{generated.whyItWorks.map((line, idx) => <li key={idx}>{line}</li>)}</ul>
                 </div>
                 {generated.score && (
-                  <div className="rounded-lg border border-sky-700/40 bg-sky-900/10 p-3">
+                  <div className="rounded-xl border border-sky-700/35 bg-sky-900/10 p-3.5">
                     <p className="mb-2 text-sm font-semibold text-sky-100">Prompt score: {generated.score.overall}/100</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {generated.score.categories.map((category) => <p key={category.label} className="text-xs text-slate-200">{category.label}: <span className="text-sky-200">{category.score}</span></p>)}
@@ -263,13 +274,13 @@ export default function PromptLabClient() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700/60 bg-slate-900/70">
+        <Card className="border border-slate-800/70 bg-slate-950/75">
           <CardHeader>
             <CardTitle className="text-lg text-white">Prompt history</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {history.length === 0 ? <p className="text-xs text-slate-400">No prompts yet.</p> : history.slice(0, 5).map((item) => (
-              <button key={item.id} className="block w-full rounded-md border border-slate-700 px-3 py-2 text-left text-xs text-slate-300 hover:border-slate-500" onClick={() => setGenerated(item)}>
+            {history.length === 0 ? <p className="rounded-lg border border-dashed border-slate-700/70 bg-slate-900/35 px-3 py-4 text-xs text-slate-400">No prompts yet.</p> : history.slice(0, 5).map((item) => (
+              <button key={item.id} className="block w-full rounded-lg border border-slate-700/80 bg-slate-900/35 px-3 py-2.5 text-left text-xs text-slate-300 transition hover:border-slate-500 hover:bg-slate-900/60" onClick={() => setGenerated(item)}>
                 <div className="mb-1 flex items-center justify-between"><span>{item.platform}</span><span>{new Date(item.createdAt).toLocaleTimeString()}</span></div>
                 <p className="line-clamp-2">{item.prompt}</p>
               </button>

@@ -17,8 +17,8 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { InteractiveGlowCard, InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 import {
   AlertCircle,
@@ -223,7 +223,7 @@ function ConversationRailContent({
   onNewConversation: () => void | Promise<void>;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-[28px] border border-[#4f7ca7]/20 bg-[linear-gradient(180deg,rgba(8,18,34,0.96)_0%,rgba(6,14,27,0.98)_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+    <InteractiveGlowSurface className="flex h-full flex-col rounded-[28px] border border-[#4f7ca7]/20 bg-[linear-gradient(180deg,rgba(8,18,34,0.96)_0%,rgba(6,14,27,0.98)_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
       <div className="border-b border-[#4f7ca7]/25 p-5">
         <Button
           type="button"
@@ -272,7 +272,7 @@ function ConversationRailContent({
           </div>
         )}
       </div>
-    </div>
+    </InteractiveGlowSurface>
   );
 }
 
@@ -397,6 +397,14 @@ function MentorPageContent() {
   const currentConversationId = activeConversationId;
   const profileDisplayName =
     profile?.profileName || profile?.full_name || "Founder";
+  const mentorContextHint = useMemo(
+    () => ({
+      hasProfileContext: Boolean(profile),
+      hasConversationOutputs: Boolean(conversationOutputs),
+      activeMode: mode,
+    }),
+    [conversationOutputs, mode, profile]
+  );
 
   const touchConversation = useCallback(
     async (conversationId: string, titleFromFirstUserMessage?: string) => {
@@ -796,6 +804,7 @@ function MentorPageContent() {
             body: {
               conversationId,
               mode,
+              mentorContextHint,
             },
           }
         );
@@ -812,6 +821,7 @@ function MentorPageContent() {
       input,
       isSending,
       messages.length,
+      mentorContextHint,
       mode,
       refreshConversations,
       sendMessage,
@@ -969,12 +979,12 @@ function MentorPageContent() {
 
   if (isBooting) {
     return (
-      <Card className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
+      <InteractiveGlowCard className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
         <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
           <RefreshCw className="h-4 w-4 animate-spin" />
           Loading mentor workspace...
         </div>
-      </Card>
+      </InteractiveGlowCard>
     );
   }
 
@@ -990,7 +1000,7 @@ function MentorPageContent() {
         onNewConversation={startNewConversation}
       />
 
-      <Card className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
+      <InteractiveGlowCard className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/60 to-transparent" />
         <div className="border-b border-[#4f7ca7]/25 px-5 py-4 md:px-7 md:py-5">
           <div className="flex items-center justify-between gap-3">
@@ -1079,7 +1089,7 @@ function MentorPageContent() {
           <>
             {activeConversationId && (
               <div className="px-5 pt-5 md:px-7 md:pt-6">
-                <Card className="rounded-2xl border border-[#4f7ca7]/30 bg-[linear-gradient(180deg,rgba(8,19,34,0.9)_0%,rgba(6,15,28,0.96)_100%)] shadow-[0_16px_48px_rgba(0,0,0,0.34)]">
+                <InteractiveGlowCard className="rounded-2xl border border-[#4f7ca7]/30 bg-[linear-gradient(180deg,rgba(8,19,34,0.9)_0%,rgba(6,15,28,0.96)_100%)] shadow-[0_16px_48px_rgba(0,0,0,0.34)]">
                   <div className="flex items-center justify-between gap-3 border-b border-[#4f7ca7]/25 p-5">
                     <div>
                       <h3 className="text-sm font-semibold text-[#f0f8ff]">
@@ -1172,7 +1182,7 @@ function MentorPageContent() {
                       </>
                     )}
                   </div>
-                </Card>
+                </InteractiveGlowCard>
               </div>
             )}
 
@@ -1261,7 +1271,7 @@ function MentorPageContent() {
 
           {actionPlan && actionPlan.tasks.length > 0 && (
             <div className="mb-4">
-              <div className="rounded-2xl border border-[#4f7ca7]/28 bg-[linear-gradient(180deg,rgba(8,18,33,0.88)_0%,rgba(6,15,28,0.94)_100%)] p-5">
+              <InteractiveGlowSurface className="rounded-2xl border border-[#4f7ca7]/28 bg-[linear-gradient(180deg,rgba(8,18,33,0.88)_0%,rgba(6,15,28,0.94)_100%)] p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold text-[#f0f8ff]">
                     Action Plan Progress
@@ -1334,7 +1344,7 @@ function MentorPageContent() {
                 {actionPlanError && (
                   <p className="mt-2 text-xs text-red-300">{actionPlanError}</p>
                 )}
-              </div>
+              </InteractiveGlowSurface>
             </div>
           )}
 
@@ -1369,19 +1379,19 @@ function MentorPageContent() {
             </Button>
           </form>
         </div>
-      </Card>
+      </InteractiveGlowCard>
     </div>
   );
 }
 
 function MentorPageFallback() {
   return (
-    <Card className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
+    <InteractiveGlowCard className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
       <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
         <RefreshCw className="h-4 w-4 animate-spin" />
         Loading mentor workspace...
       </div>
-    </Card>
+    </InteractiveGlowCard>
   );
 }
 

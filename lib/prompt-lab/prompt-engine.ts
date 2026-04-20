@@ -33,21 +33,69 @@ Rules 1-11:
 Platform optimization mode: ${platform}`;
 }
 
+function getPlatformLabel(platform: PromptPlatform) {
+  const labels: Record<Exclude<PromptPlatform, "">, string> = {
+    chatgpt: "ChatGPT",
+    claude: "Claude",
+    gemini: "Gemini",
+    perplexity: "Perplexity",
+    midjourney: "Midjourney",
+    dalle_image_generation: "DALL·E / Image Generation",
+    website_copy: "Website Copy",
+    landing_page: "Landing Page",
+    email_campaign: "Email Campaign",
+    blog_post: "Blog Post",
+    instagram: "Instagram",
+    facebook: "Facebook",
+    linkedin: "LinkedIn",
+    x_twitter: "X / Twitter",
+    google_ads: "Google Ads",
+    meta_ads: "Meta Ads",
+    youtube: "YouTube",
+    other: "Other",
+  };
+
+  if (!platform) return "";
+  return labels[platform];
+}
+
+function resolveDestination(input: PromptLabFormState): string {
+  if (input.platform === "other" && input.customPlatform.trim()) return input.customPlatform.trim();
+  return getPlatformLabel(input.platform) || "";
+}
+
 export function buildPlatformInstruction(platform: PromptPlatform): string {
   switch (platform) {
-    case "claude":
-      return "Use XML-like tags (<context>, <task>, <constraints>, <output_format>) and explicit instruction hierarchy.";
     case "chatgpt":
-      return "Use markdown sections, bullet constraints, and explicit role/task/context/output blocks.";
+    case "claude":
     case "gemini":
-      return "Use concise structured blocks and explicit short directives.";
-    case "midjourney":
-      return "Use image-generation syntax with weighted descriptors, style cues, camera/lighting details, and negative prompts where useful.";
     case "perplexity":
-      return "Frame for research quality with citations request, source quality constraints, and compare/contrast directives.";
-    case "universal":
+      return "Prioritize structured, high-quality outputs. Use clear sections, concise bullets where useful, deep but practical reasoning, and actionable recommendations.";
+    case "midjourney":
+    case "dalle_image_generation":
+      return "Focus on visual specificity: composition, style, lighting, mood, focal details, quality settings, and constraints that prevent generic imagery.";
+    case "website_copy":
+    case "landing_page":
+      return "Emphasize conversion-focused copy: clear positioning, strong headlines, skimmable structure, persuasive body sections, and explicit CTA language.";
+    case "email_campaign":
+      return "Design for email performance: compelling subject lines, sequencing logic, persuasive flow, clarity, and conversion-focused calls to action.";
+    case "instagram":
+    case "facebook":
+    case "linkedin":
+    case "x_twitter":
+      return "Adapt to social-native writing: strong hooks, high readability, platform-fit tone, concise formatting, and engagement-oriented phrasing.";
+    case "google_ads":
+    case "meta_ads":
+      return "Optimize for ad performance constraints: concise high-clarity copy, clear value proposition, sharp hooks, audience targeting cues, and direct CTAs.";
+    case "blog_post":
+      return "Prioritize blog depth and readability: logical structure, clear section flow, search-intent alignment, and actionable depth without fluff.";
+    case "youtube":
+      return "Optimize for video retention: compelling hook, narrative flow, sectional pacing, title ideas, and engagement prompts tuned for viewers.";
+    case "other":
+      return "Tailor the result to the specified destination with platform-native best practices, audience expectations, structure, and formatting.";
+    case "":
     default:
-      return "Build a hybrid structure that ports cleanly across major LLMs with clear delimiters.";
+      return "Use a premium, structured, founder-focused output that remains clear, actionable, and strategically strong.";
   }
 }
 
@@ -70,9 +118,9 @@ export function buildPromptLabUserPayload(input: PromptLabFormState, memory?: Fo
       avoid: input.noGoTone,
     },
     platform: {
-      target: input.platform,
+      target: resolveDestination(input) || null,
       variant: input.platformVariant,
-      optimization: buildPlatformInstruction(input.platform),
+      optimization: buildPlatformInstruction(input.platform || ""),
     },
     advanced: {
       outputLength: input.outputLength,
@@ -85,7 +133,7 @@ export function buildPromptLabUserPayload(input: PromptLabFormState, memory?: Fo
     memoryContext: input.memoryEnabled ? memory ?? {} : null,
     responseSchema: {
       prompt: "string",
-      platform: "claude|chatgpt|gemini|midjourney|perplexity|universal",
+      platform: "string",
       techniques: ["string"],
       whyItWorks: ["string"],
     },
@@ -95,7 +143,14 @@ export function buildPromptLabUserPayload(input: PromptLabFormState, memory?: Fo
 export function createFallbackPrompt(input: PromptLabFormState): string {
   const taskType = input.taskType === "Other" ? input.taskTypeOther : input.taskType;
   const audience = input.audienceType === "Other" ? input.audienceTypeOther : input.audienceType;
-  return `# Role\nYou are an expert assistant for ${taskType}.\n\n# Objective\n${input.objective}\n\n# Audience\n${audience}: ${input.audienceDetails}\n\n# Deliverable\n${input.deliverable}\n\n# Constraints\n${input.constraints || "Keep this practical, specific, and implementation-ready."}\n\n# Tone\nPrimary: ${input.tonePrimary}\nSecondary: ${input.toneSecondary.join(", ")}\nAvoid: ${input.noGoTone || "Jargon and fluff"}\n\n# Quality Bar\n${input.successCriteria || "High signal, founder-ready, action-oriented output."}`;
+  const platformDestination = resolveDestination(input);
+  const toneSecondary = input.toneSecondary.length > 0 ? input.toneSecondary.join(", ") : "None specified";
+  const additionalContext = input.contextDump || "No additional context provided.";
+  const platformInstruction = platformDestination
+    ? `\nThis prompt will be used for:\n${platformDestination}\n\nOptimize this response for use in ${platformDestination}. Adapt structure, formatting, tone, length, best practices, and audience expectations for this destination.\n\nPlatform-specific guidance:\n${buildPlatformInstruction(input.platform)}`
+    : "";
+
+  return `You are an expert strategist and execution partner focused on ${input.deliverable || taskType}.\n\nHelp me accomplish the following objective:\n${input.objective}\n\nBusiness / idea:\n${taskType}\n\nTarget audience:\n${audience}: ${input.audienceDetails}${platformInstruction}\n\nDesired tone / style:\nPrimary: ${input.tonePrimary}\nSecondary: ${toneSecondary}\nAvoid: ${input.noGoTone || "Jargon and fluff"}\n\nAdditional context:\n${additionalContext}\n\nConstraints:\n${input.constraints || "Keep this practical, specific, and implementation-ready."}\n\nSuccess criteria:\n${input.successCriteria || "Deliver a high-signal, founder-ready, action-oriented output."}\n\nDeliver a response that is clear, actionable, strategically strong, and tailored to this business, audience, and${platformDestination ? " platform." : " objective."}`;
 }
 
 export function heuristicScore(prompt: string, platform: PromptPlatform): PromptScore {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { createClient } from "@/lib/supabase/server";
 import {
   buildTasksFromTitles,
@@ -8,57 +9,6 @@ import {
 import { syncStrategicState } from "@/lib/mentor/sync-strategic-state";
 
 export const dynamic = "force-dynamic";
-
-export async function GET(req: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const conversationId = req.nextUrl.searchParams.get("conversationId");
-
-    let query = supabase
-      .from("action_plans")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(1);
-
-    if (conversationId) {
-      query = supabase
-        .from("action_plans")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("conversation_id", conversationId)
-        .limit(1);
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
-      return NextResponse.json({ actionPlan: null });
-    }
-
-    return NextResponse.json({
-      actionPlan: {
-        ...data,
-        tasks: sanitizeTasks(data.tasks),
-      },
-    });
-  } catch (error) {
-    console.error("[ACTION_PLANS_GET_ERROR]", error);
-    return NextResponse.json({ error: "Failed to load action plan" }, { status: 500 });
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,7 +22,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-
     const conversationId = body.conversationId as string | undefined;
     const assistantText = body.assistantText as string | undefined;
     const title = (body.title as string | undefined) ?? "Action Plan";
@@ -163,7 +112,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[ACTION_PLANS_POST_ERROR]", error);
-    return NextResponse.json({ error: "Failed to save action plan" }, { status: 500 });
+    console.error("[ACTION_PLAN_SYNC_POST_ERROR]", error);
+    return NextResponse.json({ error: "Failed to sync action plan" }, { status: 500 });
   }
 }

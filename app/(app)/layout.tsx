@@ -47,11 +47,11 @@ export default async function AppLayout({
   const sidebarUser = await getSidebarUser();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(0,212,255,0.08),transparent_28%),linear-gradient(180deg,#07111f_0%,#050c18_100%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(0,212,255,0.08),transparent_28%),linear-gradient(180deg,#07111f_0%,#050c18_100%)] text-white">
       <AppSidebar user={sidebarUser} />
 
-      <main className="min-w-0 md:pl-[112px]">
-        <div className="min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8">
+      <main className="min-w-0 md:pl-[92px]">
+        <div className="min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 xl:px-10">
           {children}
         </div>
       </main>

@@ -40,7 +40,7 @@ export function validatePromptLab(state: PromptLabFormState) {
   if (state.audienceType === "Other" && !state.audienceTypeOther.trim()) errors.audienceTypeOther = "Please specify your audience";
   if (!state.audienceDetails.trim()) errors.audienceDetails = "Add audience details";
   if (!state.tonePrimary.trim()) errors.tonePrimary = "Set a primary tone";
-  if (!state.platform) errors.platform = "Select a platform";
+  if (state.platform === "other" && !state.customPlatform.trim()) errors.customPlatform = "Please specify your platform/destination";
 
   return errors;
 }

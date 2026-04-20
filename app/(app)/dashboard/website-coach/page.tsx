@@ -3,13 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import {
-  Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { InteractiveGlowCard } from "@/components/ui/interactive-glow";
 import {
   Globe,
   Sparkles,
@@ -81,7 +81,7 @@ export default async function WebsiteCoachPage() {
 
       {/* Website status + quick actions */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <Card className="bg-brandNavy border border-brandBlue/70 shadow-xl rounded-2xl">
+        <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/70 shadow-xl rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -154,10 +154,10 @@ export default async function WebsiteCoachPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </InteractiveGlowCard>
 
         {/* Coach Mode Explainer */}
-        <Card className="bg-gradient-to-br from-brandNavy via-brandNavy/80 to-purple-900/40 border border-brandBlue/70 shadow-xl rounded-2xl">
+        <InteractiveGlowCard className="bg-gradient-to-br from-brandNavy via-brandNavy/80 to-purple-900/40 border border-brandBlue/70 shadow-xl rounded-2xl">
           <CardHeader>
             <CardTitle className="text-brandBlueLight text-lg flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default async function WebsiteCoachPage() {
               for sharper guidance.
             </p>
           </CardContent>
-        </Card>
+        </InteractiveGlowCard>
       </div>
 
       {/* Coaching presets */}
@@ -201,7 +201,7 @@ export default async function WebsiteCoachPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {/* Homepage Audit */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <Globe className="h-4 w-4" />
@@ -227,10 +227,10 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
 
           {/* Offer Clarity */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <Target className="h-4 w-4" />
@@ -255,10 +255,10 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
 
           {/* Funnel Mapping */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <Route className="h-4 w-4" />
@@ -283,10 +283,10 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
 
           {/* CTA & Copy Tone */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <FileText className="h-4 w-4" />
@@ -311,10 +311,10 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
 
           {/* SEO & Discoverability */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
@@ -339,10 +339,10 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
 
           {/* Custom Session */}
-          <Card className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
+          <InteractiveGlowCard className="bg-brandNavy border border-brandBlue/60 rounded-2xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-brandBlueLight text-base flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
@@ -367,7 +367,7 @@ export default async function WebsiteCoachPage() {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
+          </InteractiveGlowCard>
         </div>
       </section>
     </div>

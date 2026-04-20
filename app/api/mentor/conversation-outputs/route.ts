@@ -8,6 +8,7 @@ import {
   mentorOutputSchema,
   normalizeMessages,
 } from "@/lib/mentor/conversationOutputs";
+import { syncStrategicState } from "@/lib/mentor/sync-strategic-state";
 
 function createClient(request: Request) {
   return createServerClient(
@@ -171,6 +172,23 @@ export async function POST(req: Request) {
       console.error("CONVERSATION_OUTPUTS_UPSERT_ERROR", upsertError);
       return NextResponse.json({ error: "Failed to save generated outputs" }, { status: 500 });
     }
+
+    await syncStrategicState(supabase, {
+      userId: user.id,
+      currentFocus: output.recommendedPriority,
+      topPriorities: output.actionPlan.slice(0, 5),
+      knownProblems: output.riskOrBlocker ? [output.riskOrBlocker] : [],
+      opportunities: output.insights.slice(0, 5),
+      currentOfferSummary:
+        typeof profile?.offer === "string"
+          ? profile.offer
+          : typeof profile?.business_idea === "string"
+            ? profile.business_idea
+            : null,
+      currentGrowthStage:
+        typeof profile?.stage === "string" ? profile.stage : null,
+      lastUpdated: new Date().toISOString(),
+    });
 
     return NextResponse.json({ outputs: saved });
   } catch (error) {

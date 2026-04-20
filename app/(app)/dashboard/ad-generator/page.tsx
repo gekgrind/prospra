@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { AdCampaign } from "@/lib/website-brain/ad-generator";
 import {
-  Card,
   CardHeader,
   CardTitle,
   CardDescription,
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InteractiveGlowCard } from "@/components/ui/interactive-glow";
 
 type GeneratorContext = {
   usedOptions: {
@@ -157,7 +157,7 @@ export default function AdGeneratorPage() {
 
       {/* Context strip */}
       {context && (
-        <Card className="bg-slate-900/70 border-slate-800">
+        <InteractiveGlowCard className="bg-slate-900/70 border-slate-800">
           <CardContent className="flex flex-wrap items-center gap-3 py-4 text-xs sm:text-sm">
             {context.websiteUrl && (
               <Badge
@@ -192,11 +192,11 @@ export default function AdGeneratorPage() {
               </Badge>
             )}
           </CardContent>
-        </Card>
+        </InteractiveGlowCard>
       )}
 
       {/* Controls */}
-      <Card className="bg-slate-900/70 border-slate-800 shadow-xl shadow-slate-950/40">
+      <InteractiveGlowCard className="bg-slate-900/70 border-slate-800 shadow-xl shadow-slate-950/40">
         <CardHeader>
           <CardTitle className="text-white">
             Configure your campaign generation
@@ -318,7 +318,7 @@ export default function AdGeneratorPage() {
             </p>
           )}
         </CardContent>
-      </Card>
+      </InteractiveGlowCard>
 
       {/* Results */}
       {campaigns.length > 0 && (
@@ -334,7 +334,7 @@ export default function AdGeneratorPage() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             {campaigns.map((campaign) => (
-              <Card
+              <InteractiveGlowCard
                 key={campaign.id}
                 className="bg-slate-900/80 border-slate-800 flex flex-col"
               >
@@ -466,7 +466,7 @@ export default function AdGeneratorPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </InteractiveGlowCard>
             ))}
           </div>
         </div>

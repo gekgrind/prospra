@@ -11,6 +11,8 @@ import { getBillingProfile } from "@/lib/identity/profile";
 import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { buildMentorContext } from "@/lib/mentor/build-mentor-context";
+import { buildMentorSystemPrompt } from "@/lib/mentor/build-mentor-system-prompt";
 
 type Database = any;
 
@@ -445,6 +447,7 @@ async function recordUsageEvent(
 function buildSystemPrompt(
   mode: string,
   context: {
+    mentorContextPrompt: string;
     founderContext: string;
     profileContext: string;
     websiteContext: string;
@@ -453,6 +456,7 @@ function buildSystemPrompt(
   }
 ) {
   const {
+    mentorContextPrompt,
     founderContext,
     profileContext,
     websiteContext,
@@ -463,6 +467,8 @@ function buildSystemPrompt(
   switch (mode) {
     case "website-coach":
       return `
+${mentorContextPrompt}
+
 You are **Prospra Website Coach**, an expert at improving clarity, UX, and conversion.
 
 Respond with:
@@ -497,6 +503,8 @@ ${websiteContext}
 
     case "seo-ux":
       return `
+${mentorContextPrompt}
+
 You are **Prospra SEO/UX Analyzer**.
 
 Your job:
@@ -523,6 +531,8 @@ ${websiteContext}
 
     case "funnel-mapping":
       return `
+${mentorContextPrompt}
+
 You are **Prospra Funnel Architect**.
 
 Your job:
@@ -556,6 +566,8 @@ ${websiteContext}
 
     case "cta-analyzer":
       return `
+${mentorContextPrompt}
+
 You are **Prospra CTA Analyzer**, a senior conversion copywriter.
 
 Workflow:
@@ -598,6 +610,8 @@ ${websiteContext}
 
     case "board-review":
       return `
+${mentorContextPrompt}
+
 You are **Directorium Board Review** — Prospra's strategic escalation mode.
 
 Respond with:
@@ -623,6 +637,8 @@ ${memoryContext}
 
     default:
       return `
+${mentorContextPrompt}
+
 You are **Prospra**, an elite entrepreneurial mentor.
 
 Respond with:
@@ -681,6 +697,7 @@ export async function POST(req: Request) {
       messages?: unknown;
       conversationId?: string | null;
       mode?: string;
+      mentorContextHint?: unknown;
     };
 
     const raw = parsedBody.messages;
@@ -720,6 +737,8 @@ export async function POST(req: Request) {
     let profileContext = "No onboarding/profile context yet.";
     let websiteContext = "No website data yet.";
     let actionPlanContext = "No active action plan.";
+    let mentorContextPrompt =
+      "Business memory context is currently unavailable. Use only verified conversation details and state assumptions.";
     let isPremium = false;
     let conversationId = incoming ?? null;
 
@@ -836,11 +855,30 @@ export async function POST(req: Request) {
               : "Action plan exists but has no tasks.";
         }
       }
+
+      const mentorContext = await buildMentorContext({
+        supabase,
+        userId: user.id,
+        conversationId: conversationId ?? undefined,
+      });
+
+      mentorContextPrompt = buildMentorSystemPrompt({
+        mode,
+        context: mentorContext,
+        legacyContextBlocks: {
+          founderContext,
+          profileContext,
+          websiteContext,
+          memoryContext,
+          actionPlanContext,
+        },
+      });
     }
 
     /* -------------------- SYSTEM PROMPT -------------------- */
 
     const systemPrompt = buildSystemPrompt(mode, {
+      mentorContextPrompt,
       founderContext,
       profileContext,
       websiteContext,
