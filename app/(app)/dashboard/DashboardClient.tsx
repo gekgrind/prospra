@@ -25,6 +25,7 @@ interface DashboardClientProps {
   recentEntries: Array<{
     id: string;
     entry_date: string;
+    content?: string | null;
     entry_text?: string | null;
   }>;
   founderScore: FounderScoreResult;
@@ -722,23 +723,27 @@ export default function DashboardClient({
                   </InteractiveCard>
                 ) : (
                   <div className="space-y-4">
-                    {recentEntries.map((entry, idx) => (
-                      <motion.div
-                        key={entry.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.14 + idx * 0.04, duration: 0.25 }}
-                      >
-                        <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
-                            {new Date(entry.entry_date).toLocaleDateString()}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-[#d7e5f4]/76">
-                            {entry.entry_text ?? "No text available."}
-                          </p>
-                        </InteractiveCard>
-                      </motion.div>
-                    ))}
+                    {recentEntries.map((entry, idx) => {
+                      const entryContent = entry.content ?? entry.entry_text ?? "No text available.";
+
+                      return (
+                        <motion.div
+                          key={entry.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.14 + idx * 0.04, duration: 0.25 }}
+                        >
+                          <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
+                              {new Date(entry.entry_date).toLocaleDateString()}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-[#d7e5f4]/76">
+                              {entryContent}
+                            </p>
+                          </InteractiveCard>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </ShellCard>

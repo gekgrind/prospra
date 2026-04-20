@@ -120,7 +120,7 @@ export default function SettingsPage() {
           .maybeSingle<ProfileRow>();
 
         if (profileError) {
-          console.error("[SETTINGS_PROFILE_LOAD_ERROR]", profileError);
+          console.error("[SETTINGS_PROFILE_LOAD_ERROR_FULL]", JSON.stringify(profileError, null, 2));
         }
 
         const meta =

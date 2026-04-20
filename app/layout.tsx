@@ -1,13 +1,40 @@
 import "./globals.css";
 
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ClickSpark } from "@/components/global/ClickSpark";
+
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
+
+export const metadata: Metadata = {
+  title: "Prospra • Your AI Entrepreneur Mentor",
+  description:
+    "Prospra gives founders personalized guidance, strategic clarity, and motivational support powered by Entrepreneuria.",
+};
+
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+    >
+      <body className="min-h-screen bg-brandNavyDark font-sans text-white antialiased">
+        <ClickSpark />
+        {children}
+      </body>
     </html>
   );
 }

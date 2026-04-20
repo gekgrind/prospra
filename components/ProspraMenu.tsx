@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   LayoutDashboard,
   MessageSquareText,
@@ -47,30 +47,23 @@ export default function ProspraMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Hide menu on onboarding/auth/welcome pages
   const shouldHide =
     !pathname ||
     HIDDEN_EXACT_PATHS.includes(pathname) ||
     HIDDEN_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  useEffect(() => {
-    // Close menu when route changes
-    setOpen(false);
-  }, [pathname]);
-
-  if (shouldHide) return null;
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <>
-      {/* Toggle Button */}
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="fixed left-4 bottom-6 z-40 flex items-center justify-center h-11 w-11 rounded-full 
-          bg-brandNavyDark border border-brandBlue/70 shadow-lg shadow-black/40
-          hover:border-brandOrangeLight hover:shadow-brandOrange/40 
-          transition-all duration-200"
-        aria-label="Open Prospra menu"
+        onClick={() => setOpen((prevOpen) => !prevOpen)}
+        className="fixed bottom-6 left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-brandBlue/70 bg-brandNavyDark shadow-lg shadow-black/40 transition-all duration-200 hover:border-brandOrangeLight hover:shadow-brandOrange/40"
+        aria-label={open ? "Close Prospra menu" : "Open Prospra menu"}
+        aria-expanded={open}
       >
         {open ? (
           <X className="h-5 w-5 text-brandBlueLight" />
@@ -79,16 +72,14 @@ export default function ProspraMenu() {
         )}
       </button>
 
-      {/* Sidebar / Dock */}
       <aside
-        className={`fixed left-4 top-4 bottom-20 z-30 w-60 rounded-2xl 
-          bg-brandNavy/95 border border-brandBlue/70 shadow-2xl shadow-black/50
-          backdrop-blur-md transition-all duration-200 overflow-hidden
-          flex flex-col
-          ${open ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-5 pointer-events-none"}`}
+        className={`fixed bottom-20 left-4 top-4 z-30 flex w-60 flex-col overflow-hidden rounded-2xl border border-brandBlue/70 bg-brandNavy/95 shadow-2xl shadow-black/50 backdrop-blur-md transition-all duration-200 ${
+          open
+            ? "translate-x-0 opacity-100"
+            : "pointer-events-none -translate-x-5 opacity-0"
+        }`}
       >
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-brandBlue/40 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-brandBlue/40 px-4 py-3">
           <div className="flex flex-col">
             <span className="text-xs uppercase tracking-wide text-brandBlueLight/60">
               Prospra
@@ -99,31 +90,29 @@ export default function ProspraMenu() {
           </div>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            const active =
+              pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all
-                  border 
-                  ${
-                    active
-                      ? "bg-brandBlue/25 border-brandBlue text-brandBlueLight"
-                      : "bg-transparent border-transparent text-brandBlueLight/80 hover:bg-brandNavyDark hover:border-brandBlue/60 hover:text-brandBlueLight"
-                  }`}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-all ${
+                  active
+                    ? "border-brandBlue bg-brandBlue/25 text-brandBlueLight"
+                    : "border-transparent bg-transparent text-brandBlueLight/80 hover:border-brandBlue/60 hover:bg-brandNavyDark hover:text-brandBlueLight"
+                }`}
               >
                 <div
-                  className={`h-7 w-7 rounded-lg flex items-center justify-center
-                    ${
-                      active
-                        ? "bg-gradient-to-br from-brandBlueLight to-brandBlue shadow-md"
-                        : "bg-brandNavyDark border border-brandBlue/50"
-                    }`}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                    active
+                      ? "bg-gradient-to-br from-brandBlueLight to-brandBlue shadow-md"
+                      : "border border-brandBlue/50 bg-brandNavyDark"
+                  }`}
                 >
                   <Icon
                     className={`h-4 w-4 ${

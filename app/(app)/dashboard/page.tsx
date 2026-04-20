@@ -11,8 +11,11 @@ import { computeMomentumSummary } from "@/lib/momentum";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
+type Goal = Parameters<typeof computeGoalProgress>[0];
+
 function formatError(error: unknown) {
   if (!error) return null;
+
   if (error instanceof Error) {
     return {
       message: error.message,
@@ -20,6 +23,7 @@ function formatError(error: unknown) {
       stack: error.stack,
     };
   }
+
   if (typeof error === "object") {
     try {
       return JSON.parse(JSON.stringify(error));
@@ -27,6 +31,7 @@ function formatError(error: unknown) {
       return { message: "Unknown object error" };
     }
   }
+
   return { message: String(error) };
 }
 
@@ -60,37 +65,28 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const [
-    recentEntriesResult,
-    goalsResult,
-    actionPlansResult,
-    usageSnapshot,
-  ] = await Promise.all([
-    supabase
-      .from("journal_entries")
-      .select("id, entry_date, entry_text")
-      .eq("user_id", user.id)
-      .order("entry_date", { ascending: false })
-      .limit(5),
+  const [recentEntriesResult, actionPlansResult, usageSnapshot] =
+    await Promise.all([
+      supabase
+        .from("journal_entries")
+        .select(
+          "id, entry_date, progress_notes, challenges, wins, mood, created_at"
+        )
+        .eq("user_id", user.id)
+        .order("entry_date", { ascending: false })
+        .limit(5),
 
-    supabase
-      .from("goals")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true }),
+      supabase
+        .from("action_plans")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1),
 
-    supabase
-      .from("action_plans")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1),
-
-    getUsageSnapshot(supabase, user.id),
-  ]);
+      getUsageSnapshot(supabase, user.id),
+    ]);
 
   const { data: recentEntries, error: recentEntriesError } = recentEntriesResult;
-  const { data: goalsData, error: goalsError } = goalsResult;
   const { data: actionPlans, error: actionPlansError } = actionPlansResult;
 
   if (recentEntriesError) {
@@ -100,10 +96,6 @@ export default async function DashboardPage() {
     );
   }
 
-  if (goalsError) {
-    console.warn("[DASHBOARD_GOALS_FETCH_ERROR]", formatError(goalsError));
-  }
-
   if (actionPlansError) {
     console.warn(
       "[DASHBOARD_ACTION_PLANS_FETCH_ERROR]",
@@ -111,9 +103,12 @@ export default async function DashboardPage() {
     );
   }
 
-  const goals = goalsData ?? [];
   const safeRecentEntries = recentEntries ?? [];
   const latestActionPlan = actionPlans?.[0] ?? null;
+
+  // `plans` is a shared catalog table, not a user-owned goals table.
+  // Keep goals empty until a real user goals source is wired up.
+  const goals: Goal[] = [];
 
   const goalProgressValues = goals.map((goal) => computeGoalProgress(goal));
   const avgGoalProgress =

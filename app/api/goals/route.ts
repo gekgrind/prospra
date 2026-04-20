@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from("goals")
+      .from("plans")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     };
 
     const { data, error } = await supabase
-      .from("goals")
+      .from("plans")
       .insert(payload)
       .select("*")
       .single();

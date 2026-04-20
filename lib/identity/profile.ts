@@ -1,7 +1,10 @@
+import { SupabaseClient } from "@supabase/supabase-js";
+
 export const SHARED_PROFILE_COLUMNS = [
   "id",
   "email",
   "full_name",
+  "avatar_url",
   "plan_tier",
   "stripe_customer_id",
   "stripe_subscription_id",
@@ -19,6 +22,7 @@ export type SharedProfile = {
   id: string;
   email: string;
   full_name: string | null;
+  avatar_url: string | null;
   plan_tier: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
@@ -41,7 +45,7 @@ export type BillingProfile = {
 };
 
 export async function getBillingProfile(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string
 ): Promise<BillingProfile | null> {
   const { data } = await supabase

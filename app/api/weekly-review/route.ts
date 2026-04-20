@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString()),
       supabase
-        .from("goals")
+        .from("plans")
         .select("label, current_value, target_value")
         .eq("user_id", user.id),
       supabase

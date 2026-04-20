@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import ProspraMenu from "@/components/ProspraMenu";
 import ProfileMenu from "@/components/ProfileMenu";
 import PageTransition from "@/components/PageTransition";
 import MobileTabBar from "@/components/MobileTabBar";
-import { usePathname } from "next/navigation";
 
 export default function AuthLayoutShell({
   children,
@@ -36,18 +37,24 @@ export default function AuthLayoutShell({
       </header>
 
       <nav className="fixed left-0 right-0 top-14 z-40 flex h-10 items-center gap-6 overflow-x-auto whitespace-nowrap border-b border-brandBlue/30 bg-brandNavy/80 px-5 text-sm text-brandBlueLight/80 backdrop-blur-xl">
-        <a href="/dashboard" className="transition hover:text-brandBlueLight">
+        <Link
+          href="/dashboard"
+          className="transition hover:text-brandBlueLight"
+        >
           Dashboard
-        </a>
-        <a href="/mentor" className="transition hover:text-brandBlueLight">
+        </Link>
+        <Link href="/mentor" className="transition hover:text-brandBlueLight">
           Mentor
-        </a>
-        <a href="/journal" className="transition hover:text-brandBlueLight">
+        </Link>
+        <Link href="/journal" className="transition hover:text-brandBlueLight">
           Journal
-        </a>
-        <a href="/settings" className="transition hover:text-brandBlueLight">
+        </Link>
+        <Link
+          href="/settings"
+          className="transition hover:text-brandBlueLight"
+        >
           Settings
-        </a>
+        </Link>
       </nav>
 
       <ProspraMenu />

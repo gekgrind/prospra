@@ -223,47 +223,47 @@ function ConversationRailContent({
   onNewConversation: () => void | Promise<void>;
 }) {
   return (
-    <div className="flex h-full flex-col border-r border-brandBlue/30 bg-brandNavy">
-      <div className="border-b border-brandBlue/30 p-4">
+    <div className="flex h-full flex-col rounded-[28px] border border-[#4f7ca7]/20 bg-[linear-gradient(180deg,rgba(8,18,34,0.96)_0%,rgba(6,14,27,0.98)_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+      <div className="border-b border-[#4f7ca7]/25 p-5">
         <Button
           type="button"
           onClick={() => void onNewConversation()}
-          className="w-full rounded-xl bg-brandBlue text-white hover:bg-brandBlueLight"
+          className="w-full rounded-xl border border-[#5a89b5]/50 bg-[linear-gradient(180deg,rgba(28,76,131,0.95)_0%,rgba(18,56,96,0.95)_100%)] text-[#e8f5ff] shadow-[0_14px_32px_rgba(0,0,0,0.32)] hover:bg-[linear-gradient(180deg,rgba(36,89,149,0.95)_0%,rgba(22,63,108,0.95)_100%)]"
         >
           <Plus className="mr-2 h-4 w-4" />
           New Conversation
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
-          <div className="flex items-center gap-2 px-2 py-4 text-sm text-brandBlueLight/70">
+          <div className="flex items-center gap-2 px-2 py-4 text-sm text-[#b5cbe1]/72">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Loading conversations...
           </div>
         ) : conversations.length === 0 ? (
-          <p className="px-2 py-4 text-sm text-brandBlueLight/70">
+          <p className="px-2 py-4 text-sm text-[#b5cbe1]/72">
             No conversations yet.
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {conversations.map((conversation) => (
               <button
                 key={conversation.id}
                 type="button"
                 onClick={() => void onSelectConversation(conversation.id)}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-3 text-left transition",
+                  "w-full rounded-2xl border px-4 py-3.5 text-left transition",
                   conversation.id === activeConversationId
-                    ? "border-brandOrangeLight bg-brandBlue/20 text-brandBlueLight"
-                    : "border-brandBlue/25 bg-brandNavyDark text-brandBlueLight/85 hover:border-brandBlue/50 hover:bg-brandBlue/10"
+                    ? "border-[#00d4ff]/45 bg-[linear-gradient(135deg,rgba(6,31,54,0.92)_0%,rgba(8,26,44,0.9)_100%)] text-[#e8f5ff] shadow-[0_0_0_1px_rgba(0,212,255,0.14),0_10px_30px_rgba(0,0,0,0.3)]"
+                    : "border-[#4f7ca7]/25 bg-[rgba(8,18,33,0.78)] text-[#d7e6f6]/86 hover:border-[#5f92c2]/42 hover:bg-[rgba(12,29,50,0.8)]"
                 )}
               >
                 <p className="line-clamp-2 text-sm font-medium">
                   {conversation.title?.trim() || "Untitled conversation"}
                 </p>
                 {conversation.updated_at && (
-                  <p className="mt-1 text-xs text-brandBlueLight/55">
+                  <p className="mt-1 text-xs text-[#9bb4cb]/62">
                     {new Date(conversation.updated_at).toLocaleString()}
                   </p>
                 )}
@@ -284,28 +284,28 @@ function EmptyState({
   intent: string | null;
 }) {
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
+    <div className="flex flex-1 items-center justify-center p-8 md:p-10">
       <div className="mx-auto max-w-3xl text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brandBlue/40 bg-brandBlue/15">
-          <Sparkles className="h-6 w-6 text-brandBlueLight" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#4f7ca7]/35 bg-[radial-gradient(circle_at_50%_0%,rgba(0,212,255,0.24),rgba(0,0,0,0)_72%)]">
+          <Sparkles className="h-6 w-6 text-[#d7efff]" />
         </div>
 
-        <h2 className="mt-5 text-2xl font-semibold text-brandBlueLight md:text-3xl">
+        <h2 className="mt-6 text-2xl font-semibold text-[#f6fbff] md:text-3xl">
           Your founder strategy room
         </h2>
-        <p className="mt-3 text-sm text-brandBlueLight/75 md:text-base">
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-[#c3d7ea]/76 md:text-base">
           {intent
             ? `Let's tackle this with a ${intent.replace(/-/g, " ")} lens.`
             : "Ask your mentor a real founder question and turn uncertainty into next moves."}
         </p>
 
-        <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
+        <div className="mt-9 grid gap-3.5 text-left sm:grid-cols-2">
           {STARTER_PROMPTS.map((prompt) => (
             <button
               key={prompt}
               type="button"
               onClick={() => onSuggest(prompt)}
-              className="rounded-2xl border border-brandBlue/30 bg-brandNavyDark px-4 py-4 text-sm text-brandBlueLight transition hover:border-brandOrangeLight/60 hover:bg-brandBlue/10"
+              className="rounded-2xl border border-[#4f7ca7]/26 bg-[rgba(8,19,34,0.84)] px-4 py-4 text-sm text-[#d6e5f5] transition hover:border-[#63a1d6]/44 hover:bg-[rgba(10,28,48,0.9)]"
             >
               {prompt}
             </button>
@@ -969,8 +969,8 @@ function MentorPageContent() {
 
   if (isBooting) {
     return (
-      <Card className="h-[calc(100vh-160px)] w-full border-brandBlue/40 bg-brandNavy p-6 text-brandBlueLight">
-        <div className="flex h-full items-center justify-center gap-2 text-sm text-brandBlueLight/80">
+      <Card className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
+        <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
           <RefreshCw className="h-4 w-4 animate-spin" />
           Loading mentor workspace...
         </div>
@@ -979,7 +979,9 @@ function MentorPageContent() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-160px)] w-full max-w-7xl gap-4 md:gap-6">
+    <div className="relative mx-auto flex h-[calc(100vh-160px)] w-full max-w-7xl gap-5 md:gap-7">
+      <div className="pointer-events-none absolute -top-12 left-[28%] h-44 w-44 rounded-full bg-[#00d4ff]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-8 bottom-8 h-36 w-36 rounded-full bg-[#2b8fcf]/10 blur-3xl" />
       <ConversationRail
         conversations={conversations}
         isLoading={isLoadingConversations}
@@ -988,22 +990,23 @@ function MentorPageContent() {
         onNewConversation={startNewConversation}
       />
 
-      <Card className="flex min-w-0 flex-1 flex-col overflow-hidden border-brandBlue/40 bg-brandNavy shadow-xl">
-        <div className="border-b border-brandBlue/30 px-4 py-3 md:px-6">
+      <Card className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/60 to-transparent" />
+        <div className="border-b border-[#4f7ca7]/25 px-5 py-4 md:px-7 md:py-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3.5">
               <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
                   <Button
                     variant="outline"
-                    className="border-brandBlue/40 bg-brandNavyDark text-brandBlueLight md:hidden"
+                    className="border-[#4f7ca7]/32 bg-[rgba(7,18,33,0.9)] text-[#d6e8f8] hover:bg-[rgba(12,27,46,0.95)] md:hidden"
                   >
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="border-brandBlue/50 bg-brandNavy p-0 text-brandBlueLight"
+                  className="border-[#4f7ca7]/35 bg-[rgba(6,14,27,0.98)] p-0 text-[#d7e7f6]"
                 >
                   <ConversationRailContent
                     conversations={conversations}
@@ -1015,26 +1018,26 @@ function MentorPageContent() {
                 </SheetContent>
               </Sheet>
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brandBlue/40 bg-brandBlue/20">
-                <Sparkles className="h-5 w-5 text-brandBlueLight" />
+              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl border border-[#4f7ca7]/30 bg-[radial-gradient(circle_at_50%_0%,rgba(0,212,255,0.24),rgba(0,0,0,0)_70%)]">
+                <Sparkles className="h-5 w-5 text-[#dbf1ff]" />
               </div>
 
               <div>
-                <h1 className="text-base font-semibold text-brandBlueLight md:text-lg">
+                <h1 className="text-base font-semibold tracking-tight text-[#f5fbff] md:text-lg">
                   Mentor
                 </h1>
-                <p className="text-xs text-brandBlueLight/70">
+                <p className="mt-0.5 text-xs text-[#bfd3e6]/74">
                   Focused strategy support for founder decisions, {profileDisplayName}.
                 </p>
 
-                <div className="mt-1">
-                  <label className="text-[10px] uppercase tracking-wide text-brandBlueLight/60">
+                <div className="mt-2">
+                  <label className="text-[10px] uppercase tracking-[0.16em] text-[#91acc5]/80">
                     Mode
                   </label>
                   <select
                     value={mode}
                     onChange={(e) => setMode(e.target.value as ModeOption)}
-                    className="mt-1 rounded-lg border border-brandBlue/60 bg-brandNavy px-2 py-1 text-xs text-brandBlueLight transition focus:border-brandOrangeLight focus:outline-none focus:ring-2 focus:ring-brandOrangeLight/60"
+                    className="mt-1.5 rounded-xl border border-[#4f7ca7]/38 bg-[rgba(7,18,34,0.92)] px-3 py-1.5 text-xs text-[#d5e7f6] transition focus:border-[#72b8e4]/70 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/20"
                   >
                     <option value="mentor">{MODE_LABELS.mentor}</option>
                     <option value="website-coach">
@@ -1052,7 +1055,7 @@ function MentorPageContent() {
                       {!isPremiumUser ? " (Premium)" : ""}
                     </option>
                   </select>
-                  <p className="mt-1 text-[11px] text-brandBlueLight/60">
+                  <p className="mt-1.5 text-[11px] text-[#a8c0d7]/66">
                     {MODE_DESCRIPTIONS[mode]}
                   </p>
                 </div>
@@ -1061,7 +1064,7 @@ function MentorPageContent() {
 
             {!isPremiumUser && (
               <Link href="/upgrade">
-                <Button className="flex items-center gap-2 rounded-xl bg-brandOrange px-4 py-2 text-white hover:bg-brandOrangeLight">
+                <Button className="flex items-center gap-2 rounded-xl bg-brandOrange px-4 py-2 text-white shadow-[0_12px_30px_rgba(191,115,33,0.32)] hover:bg-brandOrangeLight">
                   <Crown className="h-4 w-4" />
                   Go Premium
                 </Button>
@@ -1075,14 +1078,14 @@ function MentorPageContent() {
         ) : (
           <>
             {activeConversationId && (
-              <div className="px-4 pt-4 md:px-6">
-                <Card className="rounded-xl border border-brandBlue/60 bg-brandNavyDark">
-                  <div className="flex items-center justify-between gap-3 border-b border-brandBlue/50 p-4">
+              <div className="px-5 pt-5 md:px-7 md:pt-6">
+                <Card className="rounded-2xl border border-[#4f7ca7]/30 bg-[linear-gradient(180deg,rgba(8,19,34,0.9)_0%,rgba(6,15,28,0.96)_100%)] shadow-[0_16px_48px_rgba(0,0,0,0.34)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#4f7ca7]/25 p-5">
                     <div>
-                      <h3 className="text-sm font-semibold text-brandBlueLight">
+                      <h3 className="text-sm font-semibold text-[#f0f8ff]">
                         Insights & Action Plan
                       </h3>
-                      <p className="mt-1 text-xs text-brandBlueLight/70">
+                      <p className="mt-1 text-xs text-[#b7cde2]/72">
                         Turn this conversation into focused momentum.
                       </p>
                     </div>
@@ -1091,7 +1094,7 @@ function MentorPageContent() {
                       type="button"
                       onClick={generateConversationOutputs}
                       disabled={generatingOutputs || loadingOutputs || isSending}
-                      className="rounded-lg bg-brandOrange text-white hover:bg-brandOrangeLight"
+                      className="rounded-lg bg-brandOrange text-white shadow-[0_10px_24px_rgba(191,115,33,0.32)] hover:bg-brandOrangeLight"
                     >
                       <RefreshCcw
                         className={cn(
@@ -1103,34 +1106,34 @@ function MentorPageContent() {
                     </Button>
                   </div>
 
-                  <div className="space-y-4 p-4">
+                  <div className="space-y-5 p-5">
                     {loadingOutputs ? (
-                      <p className="text-sm text-brandBlueLight/70">
+                      <p className="text-sm text-[#b8cde0]/74">
                         Loading saved outputs...
                       </p>
                     ) : outputsError ? (
                       <p className="text-sm text-red-300">{outputsError}</p>
                     ) : !conversationOutputs ? (
-                      <p className="text-sm text-brandBlueLight/70">
+                      <p className="text-sm text-[#b8cde0]/74">
                         No outputs generated yet. Use Generate to create insights
                         and a concrete action plan.
                       </p>
                     ) : (
                       <>
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-brandBlueLight/60">
+                          <p className="text-xs uppercase tracking-[0.16em] text-[#97b2c9]/80">
                             Summary
                           </p>
-                          <p className="mt-1 text-sm text-brandBlueLight">
+                          <p className="mt-1.5 text-sm text-[#e2f1ff]">
                             {conversationOutputs.summary}
                           </p>
                         </div>
 
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-brandBlueLight/60">
+                          <p className="text-xs uppercase tracking-[0.16em] text-[#97b2c9]/80">
                             Key insights
                           </p>
-                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-brandBlueLight">
+                          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-[#ddecfb]">
                             {conversationOutputs.insights.map((item, index) => (
                               <li key={`insight-${index}`}>{item}</li>
                             ))}
@@ -1138,10 +1141,10 @@ function MentorPageContent() {
                         </div>
 
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-brandBlueLight/60">
+                          <p className="text-xs uppercase tracking-[0.16em] text-[#97b2c9]/80">
                             Action plan
                           </p>
-                          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-brandBlueLight">
+                          <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-[#ddecfb]">
                             {conversationOutputs.action_plan.map((step, index) => (
                               <li key={`action-${index}`}>{step}</li>
                             ))}
@@ -1149,19 +1152,19 @@ function MentorPageContent() {
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-lg border border-brandBlue/50 bg-brandNavy px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-wide text-brandBlueLight/60">
+                          <div className="rounded-xl border border-[#4f7ca7]/28 bg-[rgba(7,18,33,0.86)] px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-[0.16em] text-[#97b2c9]/80">
                               This week priority
                             </p>
-                            <p className="mt-1 text-sm text-brandBlueLight">
+                            <p className="mt-1.5 text-sm text-[#e4f1ff]">
                               {conversationOutputs.recommended_priority}
                             </p>
                           </div>
-                          <div className="rounded-lg border border-brandBlue/50 bg-brandNavy px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-wide text-brandBlueLight/60">
+                          <div className="rounded-xl border border-[#4f7ca7]/28 bg-[rgba(7,18,33,0.86)] px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-[0.16em] text-[#97b2c9]/80">
                               Risk to watch
                             </p>
-                            <p className="mt-1 text-sm text-brandBlueLight">
+                            <p className="mt-1.5 text-sm text-[#e4f1ff]">
                               {conversationOutputs.risk_or_blocker}
                             </p>
                           </div>
@@ -1173,8 +1176,8 @@ function MentorPageContent() {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto px-5 py-6 md:px-7 md:py-7">
+              <div className="space-y-7">
                 {boardError && (
                   <div className="rounded-lg border border-red-500/50 bg-red-500/20 p-3 text-sm text-red-200">
                     {boardError}
@@ -1199,10 +1202,10 @@ function MentorPageContent() {
                       <div className="max-w-3xl space-y-2">
                         <div
                           className={cn(
-                            "whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed md:px-5 md:py-4",
+                            "whitespace-pre-wrap rounded-2xl px-4 py-3.5 text-sm leading-relaxed md:px-5 md:py-4",
                             isUser
                               ? "rounded-br-none bg-brandOrange text-white"
-                              : "rounded-bl-none border border-brandBlue/50 bg-brandNavyDark text-brandBlueLight"
+                              : "rounded-bl-none border border-[#4f7ca7]/28 bg-[rgba(8,19,34,0.82)] text-[#e0efff] shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
                           )}
                         >
                           {content}
@@ -1213,7 +1216,7 @@ function MentorPageContent() {
                             type="button"
                             onClick={generateBoardReview}
                             disabled={isBoardLoading}
-                            className="self-end rounded-lg bg-brandBlue px-3 py-1 text-xs text-white hover:bg-brandBlueLight"
+                            className="self-end rounded-lg border border-[#5a89b5]/40 bg-[linear-gradient(180deg,rgba(27,74,126,0.95)_0%,rgba(18,55,95,0.95)_100%)] px-3 py-1 text-xs text-white hover:bg-[linear-gradient(180deg,rgba(33,85,144,0.96)_0%,rgba(21,61,104,0.96)_100%)]"
                           >
                             {isBoardLoading ? "Loading Board Input..." : "Get Board Input"}
                           </Button>
@@ -1224,7 +1227,7 @@ function MentorPageContent() {
                 })}
 
                 {isSending && (
-                  <div className="text-xs text-brandBlueLight/70">
+                  <div className="text-xs text-[#b8cee1]/72">
                     Mentor is thinking...
                   </div>
                 )}
@@ -1235,7 +1238,7 @@ function MentorPageContent() {
           </>
         )}
 
-        <div className="border-t border-brandBlue/30 bg-brandNavyDark/70 px-4 py-3 md:px-6">
+        <div className="border-t border-[#4f7ca7]/25 bg-[rgba(6,16,30,0.92)] px-5 py-4 md:px-7 md:py-5">
           {(sendError || localError || chatError) && (
             <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-red-400/50 bg-red-500/10 p-3 text-xs text-red-200">
               <div className="flex items-start gap-2">
@@ -1258,18 +1261,18 @@ function MentorPageContent() {
 
           {actionPlan && actionPlan.tasks.length > 0 && (
             <div className="mb-4">
-              <div className="rounded-xl border border-brandBlue/50 bg-brandNavyDark p-4">
+              <div className="rounded-2xl border border-[#4f7ca7]/28 bg-[linear-gradient(180deg,rgba(8,18,33,0.88)_0%,rgba(6,15,28,0.94)_100%)] p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-brandBlueLight">
+                  <h3 className="text-sm font-semibold text-[#f0f8ff]">
                     Action Plan Progress
                   </h3>
-                  <p className="text-xs text-brandBlueLight/80">
+                  <p className="text-xs text-[#b6cce1]/78">
                     {actionPlanProgress.completed}/{actionPlanProgress.total} complete (
                     {actionPlanProgress.percentage}%)
                   </p>
                 </div>
 
-                <div className="mt-2 h-2 overflow-hidden rounded-full border border-brandBlue/30 bg-brandNavy">
+                <div className="mt-3 h-2 overflow-hidden rounded-full border border-[#4f7ca7]/26 bg-[rgba(6,14,27,0.9)]">
                   <div
                     className="h-full bg-brandOrange transition-all"
                     style={{ width: `${actionPlanProgress.percentage}%` }}
@@ -1280,11 +1283,11 @@ function MentorPageContent() {
                   {actionPlan.tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-brandBlue/30 bg-brandNavy px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-[#4f7ca7]/24 bg-[rgba(7,18,33,0.86)] px-3.5 py-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-brandBlueLight">{task.title}</p>
-                        <p className="mt-1 text-xs uppercase tracking-wide text-brandBlueLight/60">
+                        <p className="text-sm text-[#e1f0ff]">{task.title}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9eb9cf]/76">
                           {task.status.replace("_", " ")}
                         </p>
                       </div>
@@ -1295,7 +1298,7 @@ function MentorPageContent() {
                           size="sm"
                           variant="outline"
                           disabled={updatingTaskId === task.id || task.status === "pending"}
-                          className="border-brandBlue/40 bg-transparent text-brandBlueLight"
+                          className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
                           onClick={() => void updateTaskStatus(task, "pending")}
                         >
                           Pending
@@ -1307,7 +1310,7 @@ function MentorPageContent() {
                           disabled={
                             updatingTaskId === task.id || task.status === "in_progress"
                           }
-                          className="border-brandBlue/40 bg-transparent text-brandBlueLight"
+                          className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
                           onClick={() => void updateTaskStatus(task, "in_progress")}
                         >
                           In Progress
@@ -1318,7 +1321,7 @@ function MentorPageContent() {
                           disabled={
                             updatingTaskId === task.id || task.status === "completed"
                           }
-                          className="bg-brandOrange text-white hover:bg-brandOrangeLight"
+                          className="bg-brandOrange text-white shadow-[0_10px_24px_rgba(191,115,33,0.3)] hover:bg-brandOrangeLight"
                           onClick={() => void updateTaskStatus(task, "completed")}
                         >
                           Complete
@@ -1340,7 +1343,7 @@ function MentorPageContent() {
               e.preventDefault();
               void submitMessage();
             }}
-            className="flex items-end gap-3"
+            className="flex items-end gap-3.5"
           >
             <textarea
               ref={textareaRef}
@@ -1354,13 +1357,13 @@ function MentorPageContent() {
               }}
               placeholder="Ask your mentor what to do next..."
               rows={1}
-              className="min-h-[48px] flex-1 resize-none rounded-xl border border-brandBlue/40 bg-brandNavy px-4 py-3 text-sm text-brandBlueLight placeholder:text-brandBlueLight/45 focus:outline-none"
+              className="min-h-[52px] flex-1 resize-none rounded-2xl border border-[#4f7ca7]/30 bg-[rgba(5,14,26,0.96)] px-4 py-3.5 text-sm text-[#e4f1ff] placeholder:text-[#8fa8bf] focus:border-[#6eaedb]/65 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/18"
             />
 
             <Button
               type="submit"
               disabled={isSending || !input.trim()}
-              className="h-12 bg-brandOrange text-white hover:bg-brandOrangeLight"
+              className="h-[52px] rounded-xl bg-brandOrange px-4 text-white shadow-[0_12px_28px_rgba(191,115,33,0.34)] hover:bg-brandOrangeLight"
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -1373,8 +1376,8 @@ function MentorPageContent() {
 
 function MentorPageFallback() {
   return (
-    <Card className="h-[calc(100vh-160px)] w-full border-brandBlue/40 bg-brandNavy p-6 text-brandBlueLight">
-      <div className="flex h-full items-center justify-center gap-2 text-sm text-brandBlueLight/80">
+    <Card className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
         <RefreshCw className="h-4 w-4 animate-spin" />
         Loading mentor workspace...
       </div>
