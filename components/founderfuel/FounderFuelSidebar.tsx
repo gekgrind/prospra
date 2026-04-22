@@ -1,3 +1,5 @@
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
+
 const savedPromptPlaceholders = [
   "Launch campaign angle v1",
   "Offer refinement prompt",
@@ -12,7 +14,7 @@ const recentGenerationPlaceholders = [
 
 export default function FounderFuelSidebar() {
   return (
-    <aside className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/70 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6 lg:sticky lg:top-6">
+    <InteractiveGlowSurface className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/70 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6 lg:sticky lg:top-6">
       <section className="space-y-3 rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-4">
         <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
           Best Results
@@ -57,6 +59,6 @@ export default function FounderFuelSidebar() {
           ))}
         </ul>
       </section>
-    </aside>
+    </InteractiveGlowSurface>
   );
 }

@@ -1,4 +1,5 @@
 import type { FounderFuelTemplate } from "@/components/founderfuel/founderfuel-templates";
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 type FounderFuelTemplatePickerProps = {
   templates: FounderFuelTemplate[];
@@ -12,7 +13,7 @@ export default function FounderFuelTemplatePicker({
   onSelect,
 }: FounderFuelTemplatePickerProps) {
   return (
-    <section className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
+    <InteractiveGlowSurface className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
       <div>
         <h2 className="text-lg font-semibold text-zinc-100">Template Library</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -49,6 +50,6 @@ export default function FounderFuelTemplatePicker({
           );
         })}
       </div>
-    </section>
+    </InteractiveGlowSurface>
   );
 }

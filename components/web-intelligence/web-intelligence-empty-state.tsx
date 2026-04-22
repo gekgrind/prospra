@@ -1,10 +1,11 @@
 import { Activity, ArrowUpRight, Flag, Gauge, Radar } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InteractiveGlowCard } from "@/components/ui/interactive-glow";
 
 export function WebIntelligenceEmptyState() {
   return (
-    <Card className="relative overflow-hidden rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.66)] shadow-[0_18px_48px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+    <InteractiveGlowCard className="relative rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.66)] shadow-[0_18px_48px_rgba(0,0,0,0.26)] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00D4FF]/55 to-transparent" />
       <CardHeader className="relative z-10 pb-3">
         <CardTitle className="text-lg font-semibold text-white">
@@ -40,6 +41,6 @@ export function WebIntelligenceEmptyState() {
           })}
         </div>
       </CardContent>
-    </Card>
+    </InteractiveGlowCard>
   );
 }

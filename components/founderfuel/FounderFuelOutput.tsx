@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 type FounderFuelOutputProps = {
   generatedPrompt: string;
@@ -37,7 +38,7 @@ export default function FounderFuelOutput({ generatedPrompt }: FounderFuelOutput
   };
 
   return (
-    <section className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
+    <InteractiveGlowSurface className="space-y-4 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-zinc-100">Generated Prompt</h2>
@@ -76,6 +77,6 @@ export default function FounderFuelOutput({ generatedPrompt }: FounderFuelOutput
           </p>
         )}
       </div>
-    </section>
+    </InteractiveGlowSurface>
   );
 }

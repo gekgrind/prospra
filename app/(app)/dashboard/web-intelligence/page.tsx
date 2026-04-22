@@ -9,6 +9,7 @@ import { WebsiteSourceCard } from "@/components/web-intelligence/website-source-
 import { WebIntelligenceFeatureCard } from "@/components/web-intelligence/web-intelligence-feature-card";
 import { WebIntelligenceEmptyState } from "@/components/web-intelligence/web-intelligence-empty-state";
 import { Button } from "@/components/ui/button";
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 import {
   EMPTY_WEBSITE_INTELLIGENCE_SNAPSHOT,
   WEB_INTELLIGENCE_FEATURE_ICONS,
@@ -51,7 +52,7 @@ export default function WebIntelligencePage() {
       </section>
 
       {snapshot.websiteUrl ? (
-        <section className="rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.66)] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
+        <InteractiveGlowSurface className="rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.66)] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#8fb8d8]">
             Latest analyzed site
           </h3>
@@ -69,12 +70,12 @@ export default function WebIntelligencePage() {
               {snapshot.homepageSummary}
             </p>
           ) : null}
-        </section>
+        </InteractiveGlowSurface>
       ) : (
         <WebIntelligenceEmptyState />
       )}
 
-      <section className="rounded-[20px] border border-[#4f7ca7]/18 bg-[rgba(8,16,30,0.68)] p-4 backdrop-blur-xl md:p-5">
+      <InteractiveGlowSurface className="rounded-[20px] border border-[#4f7ca7]/18 bg-[rgba(8,16,30,0.68)] p-4 backdrop-blur-xl md:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8fb8d8]">
@@ -99,7 +100,7 @@ export default function WebIntelligencePage() {
             />
           </div>
         </div>
-      </section>
+      </InteractiveGlowSurface>
     </div>
   );
 }

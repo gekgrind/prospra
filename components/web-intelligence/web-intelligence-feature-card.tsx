@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { InteractiveGlowCard } from "@/components/ui/interactive-glow";
 import { cn } from "@/lib/utils";
 import type {
   WebIntelligenceFeature,
@@ -29,7 +29,7 @@ export function WebIntelligenceFeatureCard({
   const derived = getFeatureContent(feature.key, snapshot);
 
   return (
-    <Card
+    <InteractiveGlowCard
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.66)] shadow-[0_18px_44px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00D4FF]/30 hover:bg-[rgba(12,26,48,0.76)]",
         className
@@ -87,7 +87,7 @@ export function WebIntelligenceFeatureCard({
           </ul>
         ) : null}
       </CardContent>
-    </Card>
+    </InteractiveGlowCard>
   );
 }
 

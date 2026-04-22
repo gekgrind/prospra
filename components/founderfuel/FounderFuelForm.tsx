@@ -18,6 +18,7 @@ import {
   founderFuelOutputTypeOptions,
   founderFuelToneOptions,
 } from "@/components/founderfuel/founderfuel-templates";
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 type FounderFuelFormProps = {
   formValues: FounderFuelFormValues;
@@ -39,7 +40,7 @@ export default function FounderFuelForm({
   onGenerate,
 }: FounderFuelFormProps) {
   return (
-    <section className="space-y-5 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
+    <InteractiveGlowSurface className="space-y-5 rounded-3xl border border-slate-700/70 bg-slate-950/65 p-5 shadow-[0_20px_40px_rgba(2,6,23,0.35)] sm:p-6">
       <div>
         <h2 className="text-lg font-semibold text-zinc-100">Prompt Inputs</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -163,6 +164,6 @@ export default function FounderFuelForm({
       >
         Generate Prompt
       </button>
-    </section>
+    </InteractiveGlowSurface>
   );
 }

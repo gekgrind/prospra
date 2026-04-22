@@ -1,6 +1,8 @@
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
+
 export default function FounderFuelHero() {
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-slate-950/70 p-6 shadow-[0_0_0_1px_rgba(56,189,248,0.06),0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm sm:p-8">
+    <InteractiveGlowSurface className="relative rounded-3xl border border-cyan-300/20 bg-slate-950/70 p-6 shadow-[0_0_0_1px_rgba(56,189,248,0.06),0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm sm:p-8">
       <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-sky-300/10 blur-3xl" />
 
@@ -36,6 +38,6 @@ export default function FounderFuelHero() {
           ))}
         </div>
       </div>
-    </section>
+    </InteractiveGlowSurface>
   );
 }

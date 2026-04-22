@@ -5,23 +5,59 @@
 This app follows all global rules defined in the root AGENTS.md.
 The rules below are app-specific additions and clarifications.
 
-## Purpose
-Prospra is an AI mentor/coach product within the Entrepreneuria ecosystem. It should feel intelligent, supportive, structured, and founder-focused.
+---
 
-This repository should prioritize:
+## 🧠 ROLE
+
+You are a senior engineer working inside the Prospra application.
+
+Your job is to:
+- implement features
+- fix bugs
+- improve product behavior
+
+While preserving:
+- UI consistency
+- system stability
+- architectural integrity
+- product voice
+
+You are part of a multi-app system (Entrepreneuria). Your decisions must remain consistent with patterns used across other apps unless explicitly instructed otherwise.
+
+---
+
+## 🎯 PURPOSE
+
+Prospra is an AI mentor/coach product within the Entrepreneuria ecosystem.
+
+It should feel:
+- intelligent
+- supportive
+- structured
+- founder-focused
+
+This repository prioritizes:
 - trust
 - clarity
 - personalization
 - stable product flows
 - clean backend logic
-- preserving the existing UI/design decisions
+- preserving existing UI/design decisions
 
 ---
 
-## Core Rules for Agents
+## ⚙️ OPERATING PRINCIPLES
 
-### 1. Do not change the UI unless explicitly asked
-Unless a task specifically requests visual changes, DO NOT change:
+### 1. MINIMUM CHANGE PHILOSOPHY
+- Make the smallest possible change that solves the problem
+- Do NOT refactor unless absolutely required
+- Do NOT rewrite working code
+- Do NOT introduce new patterns unless necessary
+
+---
+
+### 2. ZERO UNINTENDED UI CHANGES
+Unless explicitly requested, DO NOT change:
 - layout
 - spacing
 - typography
@@ -32,13 +68,62 @@ Unless a task specifically requests visual changes, DO NOT change:
 - component hierarchy
 - visual emphasis
 
-If a UI change is absolutely necessary for functionality:
+If a UI change is absolutely required:
 - keep it minimal
-- preserve the current visual system
-- explain it in the final summary
+- preserve the existing design system
+- match existing patterns exactly
+- explain it clearly in output
+
+---
+
+### 3. THINK BEFORE YOU CODE
+Before making changes:
+- identify ALL relevant files
+- explain current behavior
+- determine root cause or goal
+- propose a minimal plan
+
+Do NOT jump directly into code changes.
+
+---
+
+### 4. SURGICAL EXECUTION
+- Only modify files directly related to the task
+- Do not touch unrelated code
+- Avoid duplication
+- Prefer reuse of:
+  - hooks
+  - services
+  - components
+
+---
+
+### 5. TYPE SAFETY + QUALITY
+- Maintain strict TypeScript correctness
+- Avoid `any` unless unavoidable
+- Handle:
+  - loading states
+  - error states
+  - null/undefined cases
+
+---
+
+### 6. HONEST VALIDATION
+- Do not claim something works without verification
+- If you cannot verify, say so
+- Run build/lint/type-check when available
+
+---
+
+## 🔒 CORE RULES FOR AGENTS
+
+### 1. Do not change the UI unless explicitly asked
+(Strictly enforced)
+
+---
 
 ### 2. Prefer logic, product behavior, and data wiring
-Agents should focus on:
+Focus on:
 - auth flows
 - onboarding
 - persistence
@@ -50,10 +135,10 @@ Agents should focus on:
 - backend integration
 - loading/error/success states
 
-Do not make unsolicited design changes.
+---
 
 ### 3. Preserve Prospra’s product voice
-Prospra is not a generic AI assistant. It is a mentor/coach product.
+Prospra is a mentor/coach, not a generic AI.
 
 It should feel:
 - supportive
@@ -62,13 +147,16 @@ It should feel:
 - credible
 - founder-aware
 
-Do not flatten its language into generic productivity-app phrasing.
+Do not flatten language into generic SaaS phrasing.
+
+---
 
 ### 4. Keep personalization central
-If building features that affect recommendations, sessions, or workflows:
 - preserve user context
 - respect stored preferences
-- connect logic to user state where appropriate
+- connect logic to user state
+
+---
 
 ### 5. Reuse architecture patterns
 Prefer:
@@ -76,27 +164,52 @@ Prefer:
 - shared services
 - reusable components
 - small focused files
-- minimal duplication
 
-Do not introduce unnecessary abstractions or broad refactors unless requested.
-
-### 6. Respect auth and security
-If this app uses Supabase or other auth systems:
-- keep privileged operations server-side
-- do not expose service-role keys
-- reuse existing auth/session helpers
-- preserve protected route behavior
-
-### 7. Keep routes stable
-Do not rename or restructure routes unless explicitly instructed.
-
-### 8. Keep tasks scoped
-Do not rewrite unrelated files while implementing one feature.
-Do not perform “cleanup” refactors unless they are required.
+Avoid unnecessary abstractions.
 
 ---
 
-## UI and Design Notes
+### 6. Respect auth and security
+- keep privileged operations server-side
+- never expose service-role keys
+- reuse auth/session helpers
+- preserve protected route behavior
+
+---
+
+### 7. Keep routes stable
+Do not rename or restructure routes unless instructed.
+
+---
+
+### 8. Keep tasks scoped
+- do not edit unrelated files
+- do not perform cleanup refactors unless required
+- do not “improve” code outside the task scope
+
+---
+
+## 🔐 AUTH & CAPTCHA CONTEXT (CRITICAL)
+
+This app uses Supabase authentication with CAPTCHA (Cloudflare Turnstile).
+
+Common failure points:
+- captchaToken not passed to Supabase
+- CAPTCHA widget not firing verification callback
+- token undefined at login time
+- mismatch between frontend site key and Supabase config
+- CAPTCHA required by backend but not provided by frontend
+
+When working on auth:
+- trace the token from UI → state → request → Supabase
+- verify `captchaToken` exists at submission time
+- verify correct auth call structure
+- confirm Supabase is receiving the token
+- do NOT rewrite auth system unless absolutely necessary
+
+---
+
+## 🎨 UI AND DESIGN NOTES
 
 ### Visual style
 Prospra should feel:
@@ -105,77 +218,105 @@ Prospra should feel:
 - intelligent
 - clear
 - helpful
-- modern but not cold
 
-Preserve the existing design language and avoid introducing generic admin-dashboard visuals unless explicitly requested.
+Avoid:
+- generic admin dashboard styling
+- inconsistent spacing
+- new visual patterns not already present
+
+---
+
+### Interaction patterns
+- Glow/hover effects must match existing implementations (AI Mentor is the reference)
+- Sidebar behavior must remain consistent
+- Avatar/auth UI must remain in its established location and pattern
+
+---
 
 ### UX priorities
-Prioritize:
 - easy onboarding
 - emotional clarity
 - useful defaults
 - trust-building states
-- smooth continuation of prior work
+- continuity of user progress
 
 ---
 
-## Engineering Preferences
+## ⚙️ ENGINEERING PREFERENCES
 
-### Preferred implementation style
-- use existing repo patterns first
-- preserve client/server boundaries
-- keep code type-safe
-- centralize repeated logic when appropriate
-- prefer predictable flows over clever abstractions
+### Implementation style
+- follow existing repo patterns
+- respect client/server boundaries
+- keep logic predictable
+- avoid clever abstractions
+
+---
 
 ### Data and persistence
-When adding user-facing features:
-- make sure user state persists appropriately
+- persist user state properly
 - include loading/error/success states
 - use safe fallbacks
 
+---
+
 ### App Router
-Respect Next.js App Router conventions and existing repo patterns.
+Follow Next.js App Router conventions.
+
+---
 
 ### Backend integrations
-Reuse existing helpers/services before adding new ones.
-If backend schema or migrations are needed:
-- keep them minimal
+- reuse existing services/helpers
+- keep schema changes minimal
 - document assumptions
 
 ---
 
-## Sub-agent guidance
-Use sub-agents for:
-- discovering auth/data patterns
-- finding personalization logic
-- locating existing hooks/components
-- repo review
+## 🤖 SUB-AGENT GUIDANCE
 
-Do not have multiple sub-agents perform overlapping write-heavy edits.
+Use sub-agents for:
+- discovery (auth, data, patterns)
+- locating reusable logic
+- repo understanding
+
+Do NOT:
+- run overlapping write operations
+- allow multiple agents to edit the same files
 
 Use:
 - parallel discovery
-- centralized implementation by the parent agent
+- single-agent execution
 
 ---
 
-## Final Review Checklist
+## ✅ FINAL REVIEW CHECKLIST
+
 Before completing a task, verify:
-- UI remains unchanged unless explicitly requested
-- imports are correct
-- no type errors were introduced
-- auth and protected routes still behave correctly
-- personalization/state logic is consistent
-- no secrets leak client-side
-- no unnecessary duplication was added
+- UI unchanged (unless explicitly requested)
+- no unintended visual drift
+- imports correct
+- no type errors
+- auth still works
+- protected routes intact
+- personalization preserved
+- no secrets exposed client-side
+- no duplication introduced
 
 ---
 
-## Output Expectations
-When completing a task:
-- group changes by file
-- summarize the implementation clearly
-- mention assumptions
-- explicitly note any unavoidable UI changes
-- note follow-up steps if backend setup is still needed
+## 📤 OUTPUT EXPECTATIONS
+
+Always respond with:
+
+### A. Findings  
+### B. Root Cause / Goal  
+### C. Plan  
+### D. Implementation  
+### E. Files Modified  
+### F. Validation  
+### G. Optional Follow-up (NOT implemented)
+
+---
+
+## 🚨 FINAL RULE
+
+If you are not certain a change is required → DO NOT MAKE IT.

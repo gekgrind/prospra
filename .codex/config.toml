@@ -1,0 +1,6 @@
+[agent]
+approval_mode = "on-request"
+reasoning_effort = "high"
+
+[execution]
+sandbox = true

@@ -4,7 +4,8 @@ import * as React from "react";
 import { Globe, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InteractiveGlowCard } from "@/components/ui/interactive-glow";
 import { Input } from "@/components/ui/input";
 import type { WebsiteIntelligenceSnapshot } from "@/lib/web-intelligence/types";
 
@@ -56,7 +57,7 @@ export function WebsiteSourceCard({ onSnapshotReady }: WebsiteSourceCardProps) {
   }
 
   return (
-    <Card className="relative overflow-hidden rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+    <InteractiveGlowCard className="relative rounded-[24px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00D4FF]/55 to-transparent" />
 
       <CardHeader className="relative z-10 pb-3">
@@ -118,6 +119,6 @@ export function WebsiteSourceCard({ onSnapshotReady }: WebsiteSourceCardProps) {
           ) : null}
         </div>
       </CardContent>
-    </Card>
+    </InteractiveGlowCard>
   );
 }

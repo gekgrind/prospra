@@ -1,8 +1,9 @@
 import { Sparkles } from "lucide-react";
+import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 export function WebIntelligenceHero() {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.72)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.3)] backdrop-blur-xl md:p-8">
+    <InteractiveGlowSurface className="relative rounded-[28px] border border-[#4f7ca7]/20 bg-[rgba(10,20,38,0.72)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.3)] backdrop-blur-xl md:p-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00D4FF]/60 to-transparent" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,212,255,0.16),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(79,124,167,0.14),transparent_30%)]" />
 
@@ -22,6 +23,6 @@ export function WebIntelligenceHero() {
           </p>
         </div>
       </div>
-    </section>
+    </InteractiveGlowSurface>
   );
 }
