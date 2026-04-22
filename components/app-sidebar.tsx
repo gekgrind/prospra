@@ -25,6 +25,12 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
     return "Founder";
   }, [user.email, user.fullName]);
 
+  const avatarInitial = useMemo(() => {
+    if (user.fullName?.trim()) return user.fullName.trim().charAt(0).toUpperCase();
+    if (user.email?.trim()) return user.email.trim().charAt(0).toUpperCase();
+    return "F";
+  }, [user.email, user.fullName]);
+
   return (
     <aside
       onMouseEnter={() => setIsExpanded(true)}
@@ -189,30 +195,32 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
 
         <div className="mt-auto border-t border-white/10 px-3 pb-4 pt-3">
           <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
-            <div
-              className={[
-                "flex items-center rounded-[18px] transition-all duration-300",
-                isExpanded ? "gap-3 p-2" : "justify-center p-2",
-              ].join(" ")}
-            >
-              <div className="shrink-0">
-                <ProfileMenu />
-              </div>
-
+            <ProfileMenu>
               <div
                 className={[
-                  "min-w-0 flex-1 overflow-hidden transition-all duration-300",
-                  isExpanded ? "max-w-[170px] opacity-100" : "max-w-0 opacity-0",
+                  "flex w-full items-center rounded-[18px] transition-all duration-300",
+                  isExpanded ? "gap-3 p-2" : "justify-center p-2",
                 ].join(" ")}
               >
-                <p className="truncate text-sm font-semibold text-white">
-                  {founderName}
-                </p>
-                <p className="truncate text-xs text-[#c7d8ea]/55">
-                  {user.email || "No email available"}
-                </p>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight font-bold text-brandNavy shadow-md transition-all">
+                  {avatarInitial}
+                </div>
+
+                <div
+                  className={[
+                    "min-w-0 flex-1 overflow-hidden text-left transition-all duration-300",
+                    isExpanded ? "max-w-[170px] opacity-100" : "max-w-0 opacity-0",
+                  ].join(" ")}
+                >
+                  <p className="truncate text-sm font-semibold text-white">
+                    {founderName}
+                  </p>
+                  <p className="truncate text-xs text-[#c7d8ea]/55">
+                    {user.email || "No email available"}
+                  </p>
+                </div>
               </div>
-            </div>
+            </ProfileMenu>
           </div>
         </div>
       </div>
