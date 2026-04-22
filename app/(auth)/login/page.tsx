@@ -19,6 +19,7 @@ import {
   getAnalyticsAnonymousId,
   trackClientEvent,
 } from "@/lib/analytics/client";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -31,6 +32,8 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activateGate, setActivateGate] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   const nextPath = useMemo(() => searchParams.get("next"), [searchParams]);
 
@@ -52,10 +55,20 @@ function LoginPageContent() {
     try {
       trackClientEvent(ANALYTICS_EVENTS.AUTH_LOGIN_STARTED, { anonymous_id });
 
+      if (!captchaToken) {
+        setErrorMessage("Complete the CAPTCHA verification before logging in.");
+        setLoading(false);
+        setActivateGate(false);
+        return;
+      }
+
       const { data, error: signInError } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
+          options: {
+            captchaToken,
+          },
         });
 
       if (signInError) {
@@ -67,6 +80,7 @@ function LoginPageContent() {
         setErrorMessage(signInError.message);
         setLoading(false);
         setActivateGate(false);
+        setCaptchaResetKey((current) => current + 1);
         return;
       }
 
@@ -91,6 +105,7 @@ function LoginPageContent() {
       setErrorMessage(message);
       setLoading(false);
       setActivateGate(false);
+      setCaptchaResetKey((current) => current + 1);
     }
   };
 
@@ -173,6 +188,12 @@ function LoginPageContent() {
                   {errorMessage && (
                     <div className="text-sm text-red-400">{errorMessage}</div>
                   )}
+
+                  <TurnstileWidget
+                    onTokenChange={setCaptchaToken}
+                    onError={setErrorMessage}
+                    resetKey={captchaResetKey}
+                  />
 
                   <Button
                     type="submit"
