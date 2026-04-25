@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildSharedVerifyEmailHref } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,7 +81,7 @@ export default function JournalPage() {
 
       // 🚨 Email NOT confirmed → redirect
       if (user && !user.email_confirmed_at) {
-        window.location.href = "/verify-email";
+        window.location.href = buildSharedVerifyEmailHref();
         return;
       }
 

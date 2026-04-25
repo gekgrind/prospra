@@ -1,10 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
+import { getSharedAuthCookieOptions } from "@/lib/supabase/shared-auth-cookie";
 
 export function createRequestSupabaseClient(request: Request) {
   const { url, anonKey } = getSupabaseProjectConfig();
 
   return createServerClient(url, anonKey, {
+    cookieOptions: getSharedAuthCookieOptions(),
     cookies: {
       get(name: string) {
         const raw = request.headers.get("cookie");

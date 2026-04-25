@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { buildSharedSignupHref } from "@/lib/auth/redirects";
 import { redirect } from "next/navigation";
 
 export default async function HomePage() {
@@ -10,7 +11,7 @@ export default async function HomePage() {
 
   // Not logged in → send to signup
   if (!user) {
-    redirect("/sign-up");
+    redirect(buildSharedSignupHref());
   }
 
   // Check onboarding

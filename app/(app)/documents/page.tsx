@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from 'lucide-react';
@@ -10,7 +11,7 @@ export default async function DocumentsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect(buildSharedLoginHref("/documents"));
   }
 
   const { data: documents } = await supabase

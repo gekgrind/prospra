@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { ONBOARDING_SECTIONS } from "@/lib/onboarding-framework";
 
 type OnboardingResponseValue = string | string[];
@@ -137,7 +138,7 @@ export default function OnboardingClient() {
 
         if (!res.ok) {
           if (res.status === 401) {
-            router.replace("/login?next=/onboarding");
+            window.location.assign(buildSharedLoginHref("/onboarding"));
             return;
           }
 

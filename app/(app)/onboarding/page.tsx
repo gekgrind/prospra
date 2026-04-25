@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
+import { getCurrentProspraUrl } from "@/lib/auth/request-url";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingClient from "./OnboardingClient";
 
@@ -15,7 +17,7 @@ export default async function OnboardingPage() {
   }
 
   if (!user) {
-    redirect("/login?next=/onboarding");
+    redirect(buildSharedLoginHref(await getCurrentProspraUrl("/onboarding")));
   }
 
   const { data: profile, error: profileError } = await supabase

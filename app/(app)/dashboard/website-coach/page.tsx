@@ -1,6 +1,7 @@
 // app/dashboard/website-coach/page.tsx
 
 import { createClient } from "@/lib/supabase/server";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import Link from "next/link";
 import {
   CardHeader,
@@ -35,7 +36,7 @@ export default async function WebsiteCoachPage() {
         <p className="text-brandBlueLight/70">
           You need to be logged in to use Website Coach.
         </p>
-        <Link href="/login">
+        <Link href={buildSharedLoginHref("/dashboard/website-coach")}>
           <Button className="bg-brandBlue text-white hover:bg-brandBlue/80">
             Go to login
           </Button>

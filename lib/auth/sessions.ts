@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
+import { getCurrentProspraUrl } from "@/lib/auth/request-url";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getAuthenticatedUser() {
@@ -24,8 +26,9 @@ export async function requireAuthenticatedUser(next?: string) {
   const user = await getAuthenticatedUser();
 
   if (!user) {
-    const nextParam = next ? `?next=${encodeURIComponent(next)}` : "";
-    redirect(`/login${nextParam}`);
+    redirect(
+      buildSharedLoginHref(next ?? (await getCurrentProspraUrl("/dashboard")))
+    );
   }
 
   return user;

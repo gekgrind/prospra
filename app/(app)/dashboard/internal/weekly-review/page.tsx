@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 import WeeklyReviewClient from "./weekly-review-client";
 
@@ -8,7 +9,7 @@ export default async function WeeklyReviewPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect(buildSharedLoginHref("/dashboard/internal/weekly-review"));
 
   return <WeeklyReviewClient />;
 }

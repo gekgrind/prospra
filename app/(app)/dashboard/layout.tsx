@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
+import { getCurrentProspraUrl } from "@/lib/auth/request-url";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -14,7 +16,7 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/dashboard");
+    redirect(buildSharedLoginHref(await getCurrentProspraUrl("/dashboard")));
   }
 
   const { data: profile, error: profileError } = await supabase

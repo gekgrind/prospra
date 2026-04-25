@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 import FeedbackAdminClient from "./FeedbackAdminClient";
 import type { FeedbackAdminItem } from "./types";
@@ -12,7 +13,7 @@ export default async function FeedbackAdminPage() {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect("/login");
+    redirect(buildSharedLoginHref("/dashboard/feedback"));
   }
 
   const { data: profile, error: profileError } = await supabase

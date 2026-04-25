@@ -1,6 +1,8 @@
-const APP_KEYS = ["prospra", "architecta", "directorium", "synceri"] as const;
-
-export type EcosystemApp = (typeof APP_KEYS)[number];
+export type EcosystemApp =
+  | "prospra"
+  | "architecta"
+  | "directorium"
+  | "synceri";
 
 function cleanEnv(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -28,20 +30,41 @@ export function getSupabaseProjectConfig() {
   };
 }
 
+export function getEcosystemSiteUrl(): string | undefined {
+  return (
+    cleanEnv(process.env.NEXT_PUBLIC_APP_URL) ?? "https://entrepreneuria.io"
+  );
+}
+
 export function getEcosystemCookieDomain(): string | undefined {
-  return cleanEnv(process.env.NEXT_PUBLIC_ENTREPRENEURIA_COOKIE_DOMAIN);
+  return (
+    cleanEnv(process.env.NEXT_PUBLIC_ENTREPRENEURIA_COOKIE_DOMAIN) ??
+    ".entrepreneuria.io"
+  );
 }
 
 export function getEcosystemAppUrl(app: EcosystemApp): string | undefined {
   switch (app) {
     case "prospra":
-      return cleanEnv(process.env.NEXT_PUBLIC_PROSPRA_APP_URL);
+      return (
+        cleanEnv(process.env.NEXT_PUBLIC_PROSPRA_APP_URL) ??
+        "https://prospra.entrepreneuria.io"
+      );
     case "architecta":
-      return cleanEnv(process.env.NEXT_PUBLIC_ARCHITECTA_APP_URL);
+      return (
+        cleanEnv(process.env.NEXT_PUBLIC_ARCHITECTA_APP_URL) ??
+        "https://architecta.entrepreneuria.io"
+      );
     case "directorium":
-      return cleanEnv(process.env.NEXT_PUBLIC_DIRECTORIUM_APP_URL);
+      return (
+        cleanEnv(process.env.NEXT_PUBLIC_DIRECTORIUM_APP_URL) ??
+        "https://directorium.entrepreneuria.io"
+      );
     case "synceri":
-      return cleanEnv(process.env.NEXT_PUBLIC_SYNCERI_APP_URL);
+      return (
+        cleanEnv(process.env.NEXT_PUBLIC_SYNCERI_APP_URL) ??
+        "https://synceri.entrepreneuria.io"
+      );
     default:
       return undefined;
   }

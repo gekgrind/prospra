@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "./DashboardClient";
 import { SuccessCoachDock } from "@/components/dashboard/SuccessCoachDock";
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
   }
 
   if (!user) {
-    redirect("/login?next=/dashboard");
+    redirect(buildSharedLoginHref("/dashboard"));
   }
 
   const { data: profile, error: profileError } = await supabase

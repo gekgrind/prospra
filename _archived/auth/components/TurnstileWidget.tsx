@@ -1,3 +1,4 @@
+// Archived inactive Prospra-owned Turnstile widget. Shared Entrepreneuria auth is now canonical.
 "use client";
 
 import Script from "next/script";

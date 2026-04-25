@@ -1,9 +1,11 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
+import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
 import {
-  getEcosystemCookieDomain,
-  getSupabaseProjectConfig,
-} from "@/lib/config/ecosystem";
+  applySharedAuthCookieOptions,
+  getSharedAuthCookieOptions,
+} from "@/lib/supabase/shared-auth-cookie";
 
 const LOGIN_PATH = "/login";
 const SIGN_UP_PATH = "/sign-up";
@@ -35,20 +37,8 @@ const PROTECTED_PATH_PREFIXES = [
   "/upgrade",
 ];
 
-function applySharedCookieOptions(
-  options: CookieOptions,
-  sharedCookieDomain?: string | null
-): CookieOptions {
-  return {
-    ...options,
-    ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
-  };
-}
-
-function buildLoginRedirectPath(pathname: string, search: string) {
-  const next = `${pathname}${search}`;
-  const encodedNext = encodeURIComponent(next);
-  return `${LOGIN_PATH}?next=${encodedNext}`;
+function buildLoginRedirectUrl(request: NextRequest) {
+  return buildSharedLoginHref(request.nextUrl.href);
 }
 
 function isStaticAsset(pathname: string) {
@@ -105,17 +95,17 @@ async function getOnboardingComplete(
 
 export async function proxy(request: NextRequest) {
   const { url, anonKey } = getSupabaseProjectConfig();
-  const sharedCookieDomain = getEcosystemCookieDomain();
 
   let response = NextResponse.next({ request });
 
-  const { pathname, search } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
   if (isStaticAsset(pathname) || isPublicPath(pathname)) {
     return response;
   }
 
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: getSharedAuthCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -131,7 +121,7 @@ export async function proxy(request: NextRequest) {
           response.cookies.set(
             name,
             value,
-            applySharedCookieOptions(options ?? {}, sharedCookieDomain)
+            applySharedAuthCookieOptions(options)
           );
         });
       },
@@ -153,7 +143,7 @@ export async function proxy(request: NextRequest) {
 
   if (!user && isProtectedPath(pathname)) {
     return NextResponse.redirect(
-      new URL(buildLoginRedirectPath(pathname, search), request.url)
+      new URL(buildLoginRedirectUrl(request), request.url)
     );
   }
 

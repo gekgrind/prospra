@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 
+import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -625,7 +626,7 @@ function MentorPageContent() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push("/login");
+      window.location.assign(buildSharedLoginHref("/mentor"));
       return null;
     }
 
@@ -677,7 +678,7 @@ function MentorPageContent() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push("/login");
+        window.location.assign(buildSharedLoginHref("/mentor"));
         return null;
       }
 
@@ -919,7 +920,7 @@ function MentorPageContent() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push("/login");
+        window.location.assign(buildSharedLoginHref("/mentor"));
         return;
       }
 

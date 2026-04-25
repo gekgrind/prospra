@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  buildSharedForgotPasswordHref,
+  buildSharedLoginHref,
+} from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
 import {
   Card,
@@ -62,7 +64,6 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function SettingsPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export default function SettingsPage() {
         } = await supabase.auth.getUser();
 
         if (userError || !user) {
-          router.push("/login");
+          window.location.assign(buildSharedLoginHref("/dashboard/settings"));
           return;
         }
 
@@ -195,7 +196,7 @@ export default function SettingsPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, []);
 
   const nameError = useMemo(() => {
     if (!state.fullName.trim()) return "Full name is required.";
@@ -297,7 +298,7 @@ export default function SettingsPage() {
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    window.location.assign(buildSharedLoginHref());
   };
 
   if (loading) {
@@ -483,7 +484,7 @@ export default function SettingsPage() {
             asChild
             className="bg-slate-800 text-slate-100 hover:bg-slate-700"
           >
-            <Link href="/reset-password">Reset password</Link>
+            <a href={buildSharedForgotPasswordHref()}>Reset password</a>
           </Button>
           <Button
             onClick={handleSignOut}

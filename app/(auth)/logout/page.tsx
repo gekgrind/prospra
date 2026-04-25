@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildSharedLoginHref,
+  buildSharedLogoutHref,
+} from "@/lib/auth/redirects";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { trackClientEvent } from "@/lib/analytics/client";
 
 export default function LogoutPage() {
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -33,12 +35,12 @@ export default function LogoutPage() {
 
       // Give the vortex a moment to "swallow" them
       setTimeout(() => {
-        router.push("/");
+        window.location.assign(buildSharedLogoutHref(buildSharedLoginHref()));
       }, 2000);
     };
 
     run();
-  }, [router, supabase]);
+  }, [supabase]);
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center px-4 py-10 overflow-hidden bg-brandNavyDark">
