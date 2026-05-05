@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search, Command } from "lucide-react";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 const COMMAND_ITEMS = [
   { label: "Go to Dashboard", shortcut: "D", href: "/dashboard" },
@@ -15,6 +16,7 @@ export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -67,7 +69,11 @@ export default function CommandPalette() {
                 className="w-full flex items-center justify-between px-4 py-2 text-left text-sm hover:bg-brandNavy transition"
                 onClick={() => {
                   setOpen(false);
-                  router.push(item.href);
+                  router.push(
+                    item.href === "/settings"
+                      ? buildReturnToHref("/dashboard/settings", pathname)
+                      : item.href
+                  );
                 }}
               >
                 <span className="text-brandBlueLight">{item.label}</span>

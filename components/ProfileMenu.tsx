@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 type ProfileMenuProps = {
   children?: ReactNode;
@@ -14,10 +16,13 @@ type MenuPosition = {
 };
 
 export default function ProfileMenu({ children }: ProfileMenuProps) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const returnTo = pathname || "/dashboard";
+  const settingsHref = buildReturnToHref("/dashboard/settings", returnTo);
 
   useEffect(() => {
     if (!open) {
@@ -110,7 +115,7 @@ export default function ProfileMenu({ children }: ProfileMenuProps) {
           "
         >
           <Link
-            href="/settings"
+            href={settingsHref}
             className="block px-4 py-2 text-sm transition hover:bg-brandNavy hover:text-brandBlueLight"
             onClick={() => setOpen(false)}
           >

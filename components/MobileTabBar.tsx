@@ -8,6 +8,7 @@ import {
   NotebookPen,
   Settings,
 } from "lucide-react";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 const items = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -46,11 +47,15 @@ export default function MobileTabBar() {
         const Icon = item.icon;
         const active =
           pathname === item.href || pathname.startsWith(item.href + "/");
+        const href =
+          item.href === "/settings"
+            ? buildReturnToHref("/dashboard/settings", pathname)
+            : item.href;
 
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href}
             className="flex flex-col items-center justify-center gap-0.5 text-[11px]"
           >
             <div

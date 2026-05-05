@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import {
   buildSharedForgotPasswordHref,
   buildSharedLoginHref,
+  getSafeReturnTo,
 } from "@/lib/auth/redirects";
+import { getCommandCenterUrl } from "@/lib/config/ecosystem";
 import { createClient } from "@/lib/supabase/client";
 import {
   Card,
@@ -33,6 +36,35 @@ type SettingsState = {
   productUpdates: boolean;
   investorUpdates: boolean;
 };
+
+function getReturnLabel(returnTo: string) {
+  const commandCenterUrl = getCommandCenterUrl();
+
+  if (returnTo === commandCenterUrl) {
+    return "Back to Command Center";
+  }
+
+  if (returnTo === "/dashboard") {
+    return "Back to Dashboard";
+  }
+
+  if (returnTo.startsWith("/")) {
+    return "Back to Prospra";
+  }
+
+  try {
+    const returnOrigin = new URL(returnTo).origin;
+    const commandCenterOrigin = new URL(commandCenterUrl).origin;
+
+    if (returnOrigin === commandCenterOrigin) {
+      return "Back to Command Center";
+    }
+  } catch {
+    // Fall through to the generic label.
+  }
+
+  return "Back";
+}
 
 type ProfileRow = {
   full_name?: string | null;
@@ -68,6 +100,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [returnTo, setReturnTo] = useState(() => getSafeReturnTo());
   const [email, setEmail] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -198,6 +231,11 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setReturnTo(getSafeReturnTo(params.get("returnTo")));
+  }, []);
+
   const nameError = useMemo(() => {
     if (!state.fullName.trim()) return "Full name is required.";
     if (state.fullName.trim().length < 2) {
@@ -314,6 +352,14 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-5xl space-y-8">
+      <a
+        href={returnTo}
+        className="inline-flex items-center gap-2 rounded-full border border-[#00D4FF]/20 bg-[#00D4FF]/10 px-4 py-2 text-sm font-semibold text-[#bfefff] shadow-[0_0_24px_rgba(0,212,255,0.08)] transition hover:border-[#00D4FF]/35 hover:bg-[#00D4FF]/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {getReturnLabel(returnTo)}
+      </a>
+
       <div>
         <h1 className="mb-2 text-4xl font-bold text-white">
           Settings &amp; Preferences

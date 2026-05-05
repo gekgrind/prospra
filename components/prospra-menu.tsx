@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 // -------------------------------------------------------------
 // AI PULSE ORB (center glowing orb)
@@ -143,10 +144,14 @@ export default function ProspraMenu() {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = pathname === item.href;
+                const href =
+                  item.href === "/settings"
+                    ? buildReturnToHref("/dashboard/settings", pathname)
+                    : item.href;
 
                 return (
                   <Magnetic key={item.href}>
-                    <Link href={item.href} onClick={() => setOpen(false)}>
+                    <Link href={href} onClick={() => setOpen(false)}>
                       <motion.div
                         whileHover={{ scale: 1.25 }}
                         whileTap={{ scale: 0.9 }}

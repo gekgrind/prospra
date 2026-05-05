@@ -44,6 +44,38 @@ function sanitizeNextTarget(next?: string | null) {
   return APP_HOME_PATH;
 }
 
+export function getSafeReturnTo(
+  returnTo?: string | string[] | null,
+  fallbackPath = APP_HOME_PATH
+) {
+  const target = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+
+  if (!target) {
+    return fallbackPath;
+  }
+
+  if (target.startsWith("/") && !target.startsWith("//")) {
+    return target;
+  }
+
+  try {
+    const url = new URL(target);
+
+    if (getTrustedAuthOrigins().has(url.origin)) {
+      return url.toString();
+    }
+  } catch {
+    // Fall through to the safe fallback.
+  }
+
+  return fallbackPath;
+}
+
+export function buildReturnToHref(path: string, returnTo?: string | null) {
+  const safeReturnTo = getSafeReturnTo(returnTo);
+  return `${path}?returnTo=${encodeURIComponent(safeReturnTo)}`;
+}
+
 function buildPathWithQuery(
   path: string,
   params?: Record<string, SearchParamValue>

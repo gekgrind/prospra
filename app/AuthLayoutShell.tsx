@@ -6,6 +6,7 @@ import ProspraMenu from "@/components/ProspraMenu";
 import ProfileMenu from "@/components/ProfileMenu";
 import PageTransition from "@/components/PageTransition";
 import MobileTabBar from "@/components/MobileTabBar";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 export default function AuthLayoutShell({
   children,
@@ -18,6 +19,7 @@ export default function AuthLayoutShell({
     pathname?.startsWith("/auth") || pathname?.startsWith("/onboarding");
 
   const isDashboardRoute = pathname?.startsWith("/dashboard");
+  const settingsHref = buildReturnToHref("/dashboard/settings", pathname);
 
   if (isDashboardRoute) {
     return <PageTransition>{children}</PageTransition>;
@@ -50,7 +52,7 @@ export default function AuthLayoutShell({
           Journal
         </Link>
         <Link
-          href="/settings"
+          href={settingsHref}
           className="transition hover:text-brandBlueLight"
         >
           Settings

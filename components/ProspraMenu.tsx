@@ -11,6 +11,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { buildReturnToHref } from "@/lib/auth/redirects";
 
 const HIDDEN_PATH_PREFIXES = [
   "/onboarding",
@@ -95,11 +96,15 @@ export default function ProspraMenu() {
             const Icon = item.icon;
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");
+            const href =
+              item.href === "/settings"
+                ? buildReturnToHref("/dashboard/settings", pathname)
+                : item.href;
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-all ${
                   active
