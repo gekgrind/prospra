@@ -20,6 +20,8 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
     description:
       "Get sharp feedback on clarity, structure, and messaging across your pages.",
     status: "Foundation ready",
+    href: "/site-strategist/website-coach",
+    ctaLabel: "Open tool",
   },
   {
     key: "seo-ux",
@@ -27,6 +29,8 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
     description:
       "Measure discoverability and user experience with focused scoring signals.",
     status: "Signals calibrating",
+    href: "/site-strategist/seo-ux",
+    ctaLabel: "Launch analysis",
   },
   {
     key: "funnel-mapping",
@@ -34,6 +38,8 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
     description:
       "Visualize how visitors move through your site and where momentum breaks.",
     status: "Pathing blueprint live",
+    href: "/site-strategist/funnel-mapping",
+    ctaLabel: "Map funnel",
   },
   {
     key: "cta-analyzer",
@@ -41,6 +47,8 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
     description:
       "Inspect your calls to action and identify where conversion intent weakens.",
     status: "Conversion layer staged",
+    href: "/site-strategist/cta-analyzer",
+    ctaLabel: "Improve this",
   },
   {
     key: "copy-architect",
@@ -48,6 +56,8 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
     description:
       "Strengthen the copy on key pages with positioning and conversion-focused improvements.",
     status: "Editorial engine queued",
+    href: "/site-strategist/copy-architect",
+    ctaLabel: "Open tool",
   },
 ];
 

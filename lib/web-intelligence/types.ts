@@ -60,4 +60,6 @@ export type WebIntelligenceFeature = {
   title: string;
   description: string;
   status: string;
+  href: string;
+  ctaLabel: string;
 };
