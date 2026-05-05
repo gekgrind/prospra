@@ -3,10 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftToLine, Sparkles } from "lucide-react";
+import { ArrowLeftToLine, ChevronDown, Sparkles } from "lucide-react";
 
 import ProfileMenu from "@/components/ProfileMenu";
-import { DASHBOARD_NAV_ITEMS } from "@/components/dashboard/nav-items";
+import {
+  DASHBOARD_NAV_GROUPS,
+  DASHBOARD_UTILITY_ITEMS,
+  type DashboardNavGroup,
+  type DashboardNavItem,
+} from "@/components/dashboard/nav-items";
 import { getCommandCenterUrl } from "@/lib/config/ecosystem";
 
 type SidebarUser = {
@@ -20,9 +25,22 @@ function matchesRoute(pathname: string | null, route: string) {
   return pathname === route || pathname?.startsWith(`${route}/`);
 }
 
+function isNavItemActive(pathname: string | null, item: DashboardNavItem) {
+  return item.href === "/dashboard"
+    ? pathname === item.href
+    : item.matchPrefixes
+      ? item.matchPrefixes.some((prefix) => matchesRoute(pathname, prefix))
+      : pathname === item.href;
+}
+
+function isGroupActive(pathname: string | null, group: DashboardNavGroup) {
+  return group.items.some((item) => isNavItemActive(pathname, item));
+}
+
 export function AppSidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const commandCenterHref = getCommandCenterUrl();
   const hasAuthenticatedUser = Boolean(
     user.email?.trim() || user.fullName?.trim() || user.avatarUrl?.trim()
@@ -94,142 +112,98 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
           </Link>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="flex-1 overflow-hidden px-3 py-3">
           <div
             className={[
-              "mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8fb8d8]/75 transition-all duration-300",
+              "mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8fb8d8]/75 transition-all duration-300",
               isExpanded
                 ? "translate-x-0 opacity-100"
                 : "pointer-events-none -translate-x-1 opacity-0",
             ].join(" ")}
           >
-            Main Menu
+            Navigation
           </div>
 
-          <nav className="mt-2">
-            <ul className="space-y-1.5">
-              {DASHBOARD_NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive =
-                  item.href === "/dashboard"
-                    ? pathname === item.href
-                    : item.matchPrefixes
-                      ? item.matchPrefixes.some((prefix) =>
-                          matchesRoute(pathname, prefix)
-                        )
-                      : pathname === item.href;
+          <nav className="mt-1 space-y-2">
+            {DASHBOARD_NAV_GROUPS.map((group) => {
+              const groupActive = isGroupActive(pathname, group);
+              const groupOpen =
+                group.defaultOpen || groupActive || Boolean(openGroups[group.id]);
+              const visibleItems = isExpanded
+                ? groupOpen
+                  ? group.items
+                  : []
+                : group.items;
 
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      title={!isExpanded ? item.label : undefined}
+              return (
+                <div key={group.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenGroups((current) => ({
+                        ...current,
+                        [group.id]: !groupOpen,
+                      }))
+                    }
+                    className={[
+                      "flex h-7 w-full items-center rounded-xl px-2 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all duration-300",
+                      isExpanded
+                        ? "justify-between text-[#8fb8d8]/78 hover:bg-white/[0.035] hover:text-white"
+                        : "pointer-events-none justify-center text-[#8fb8d8]/0",
+                    ].join(" ")}
+                    aria-expanded={groupOpen}
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown
                       className={[
-                        "group/item relative flex w-full items-center overflow-hidden rounded-2xl border transition-all duration-300",
-                        isExpanded
-                          ? "gap-3 px-3 py-2.5"
-                          : "justify-center px-2 py-2.5",
-                        isActive
-                          ? [
-                              "border-[#00D4FF]/20 bg-[linear-gradient(180deg,rgba(0,212,255,0.12),rgba(255,255,255,0.03))]",
-                              "text-white shadow-[0_8px_30px_rgba(0,212,255,0.10)]",
-                            ].join(" ")
-                          : [
-                              "border-transparent text-[#dbe9f8]",
-                              "hover:border-white/10 hover:bg-white/[0.04] hover:text-white",
-                            ].join(" "),
+                        "h-3.5 w-3.5 transition-transform duration-200",
+                        groupOpen ? "rotate-180" : "rotate-0",
                       ].join(" ")}
-                    >
-                      <div
-                        className={[
-                          "pointer-events-none absolute bottom-0 left-0 top-0 w-[3px] rounded-r-full transition-all duration-300",
-                          isActive
-                            ? "bg-[#00D4FF] shadow-[0_0_16px_rgba(0,212,255,0.8)] opacity-100"
-                            : "bg-transparent opacity-0 group-hover/item:opacity-40",
-                        ].join(" ")}
+                    />
+                  </button>
+
+                  <ul className="space-y-1">
+                    {visibleItems.map((item) => (
+                      <NavItemLink
+                        key={item.href}
+                        item={item}
+                        isActive={isNavItemActive(pathname, item)}
+                        isExpanded={isExpanded}
                       />
-
-                      <div
-                        className={[
-                          "pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300",
-                          isActive
-                            ? "opacity-100 bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.12),transparent_38%)]"
-                            : "opacity-0 group-hover/item:opacity-100 bg-[radial-gradient(circle_at_left_center,rgba(255,255,255,0.05),transparent_42%)]",
-                        ].join(" ")}
-                      />
-
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                        {isActive && (
-                          <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/12 blur-md" />
-                        )}
-
-                        <Icon
-                          className={[
-                            "relative z-10 h-[18px] w-[18px] transition-all duration-300",
-                            isActive
-                              ? "text-[#00D4FF]"
-                              : "text-[#8fb8d8] group-hover/item:text-white",
-                          ].join(" ")}
-                        />
-                      </div>
-
-                      <div
-                        className={[
-                          "relative z-10 flex min-w-0 items-center justify-between overflow-hidden transition-all duration-300",
-                          isExpanded
-                            ? "max-w-[180px] flex-1 opacity-100"
-                            : "max-w-0 opacity-0",
-                        ].join(" ")}
-                      >
-                        <span className="truncate whitespace-nowrap text-sm font-medium">
-                          {item.label}
-                        </span>
-
-                        {item.badge ? (
-                          <span className="ml-2 rounded-full border border-[#00D4FF]/25 bg-[#00D4FF]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#00D4FF]">
-                            {item.badge}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {!isExpanded && (
-                        <div className="pointer-events-none absolute left-[78px] top-1/2 z-50 hidden -translate-y-1/2 rounded-xl border border-white/10 bg-[#08111f]/95 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-md group-hover/item:block">
-                          {item.label}
-                        </div>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </nav>
         </div>
 
-        <div className="mt-auto border-t border-white/10 px-3 pb-4 pt-3">
+        <div className="mt-auto border-t border-white/10 px-3 pb-3 pt-2.5">
           {hasAuthenticatedUser ? (
-            <div className="mb-3 border-b border-white/10 pb-3">
+            <div className="mb-2 border-b border-white/10 pb-2">
               <Link
                 href={commandCenterHref}
                 prefetch={false}
                 title={!isExpanded ? "Command Center" : undefined}
                 className={[
-                  "group/item relative flex w-full items-center overflow-hidden rounded-2xl border border-transparent text-[#dbe9f8]/85 transition-all duration-300",
+                  "group/item relative flex w-full items-center overflow-hidden rounded-2xl border border-transparent text-[#dbe9f8]/85 transition-[transform,border-color,background-color,box-shadow,color] duration-200 ease-out motion-safe:hover:-translate-y-0.5",
                   isExpanded
-                    ? "gap-3 px-3 py-2.5"
-                    : "justify-center px-2 py-2.5",
-                  "hover:border-[#00D4FF]/20 hover:bg-[#00D4FF]/[0.045] hover:text-white hover:shadow-[0_0_24px_rgba(0,212,255,0.12)]",
-                  "focus-visible:border-[#00D4FF]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]",
+                    ? "gap-3 px-3 py-2"
+                    : "justify-center px-2 py-2",
+                  "hover:border-[#00D4FF]/24 hover:bg-white/[0.045] hover:text-white hover:shadow-[0_0_26px_rgba(0,212,255,0.16),inset_0_0_0_1px_rgba(0,212,255,0.08)]",
+                  "focus-visible:border-[#00D4FF]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]",
                 ].join(" ")}
               >
-                <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-[3px] rounded-r-full bg-[#00D4FF] opacity-0 shadow-[0_0_16px_rgba(0,212,255,0.8)] transition-all duration-300 group-hover/item:opacity-50 group-focus-visible/item:opacity-70" />
+                <div className="pointer-events-none absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full bg-[#00D4FF] opacity-0 shadow-[0_0_18px_rgba(0,212,255,0.9)] transition-all duration-200 group-hover/item:opacity-70 group-focus-visible/item:opacity-80" />
 
-                <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.13),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
+                <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.16),transparent_44%)] opacity-0 transition-opacity duration-200 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
+                <div className="pointer-events-none absolute inset-px rounded-2xl opacity-0 shadow-[inset_0_0_24px_rgba(0,212,255,0.08)] transition-opacity duration-200 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
 
                 <div className="pointer-events-none absolute inset-y-0 -left-10 w-10 -skew-x-12 bg-[#00D4FF]/10 opacity-0 blur-sm transition-all duration-700 motion-safe:group-hover/item:left-[115%] motion-safe:group-hover/item:opacity-100 motion-safe:group-focus-visible/item:left-[115%] motion-safe:group-focus-visible/item:opacity-100 motion-reduce:hidden" />
 
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                  <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/12 opacity-0 blur-md transition-opacity duration-300 motion-safe:group-hover/item:animate-pulse group-hover/item:opacity-100 group-focus-visible/item:opacity-100 motion-reduce:group-hover/item:animate-none" />
-                  <ArrowLeftToLine className="relative z-10 h-[18px] w-[18px] text-[#8fb8d8] transition-all duration-300 group-hover/item:text-[#00D4FF] group-focus-visible/item:text-[#00D4FF]" />
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+                  <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/14 opacity-0 blur-md transition-opacity duration-200 motion-safe:group-hover/item:animate-pulse group-hover/item:opacity-100 group-focus-visible/item:opacity-100 motion-reduce:group-hover/item:animate-none" />
+                  <ArrowLeftToLine className="relative z-10 h-4 w-4 text-[#8fb8d8] transition-all duration-300 group-hover/item:text-[#00D4FF] group-focus-visible/item:text-[#00D4FF]" />
                 </div>
 
                 <div
@@ -254,15 +228,27 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
             </div>
           ) : null}
 
-          <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
+          <ul className="mb-2 space-y-1">
+            {DASHBOARD_UTILITY_ITEMS.map((item) => (
+              <NavItemLink
+                key={item.href}
+                item={item}
+                isActive={isNavItemActive(pathname, item)}
+                isExpanded={isExpanded}
+                density="compact"
+              />
+            ))}
+          </ul>
+
+          <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
             <ProfileMenu>
               <div
                 className={[
                   "flex w-full items-center rounded-[18px] transition-all duration-300",
-                  isExpanded ? "gap-3 p-2" : "justify-center p-2",
+                  isExpanded ? "gap-2.5 p-1.5" : "justify-center p-1.5",
                 ].join(" ")}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight font-bold text-brandNavy shadow-md transition-all">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight text-sm font-bold text-brandNavy shadow-md transition-all">
                   {avatarInitial}
                 </div>
 
@@ -285,5 +271,124 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function NavItemLink({
+  item,
+  isActive,
+  isExpanded,
+  density = "default",
+}: {
+  item: DashboardNavItem;
+  isActive: boolean;
+  isExpanded: boolean;
+  density?: "default" | "compact";
+}) {
+  const Icon = item.icon;
+  const iconSize = density === "compact" ? "h-4 w-4" : "h-[18px] w-[18px]";
+  const iconBoxSize = density === "compact" ? "h-8 w-8" : "h-9 w-9";
+  const rowPadding =
+    density === "compact"
+      ? isExpanded
+        ? "gap-2.5 px-2.5 py-1.5"
+        : "justify-center px-2 py-1.5"
+      : isExpanded
+        ? "gap-3 px-3 py-2"
+        : "justify-center px-2 py-2";
+
+  return (
+    <li>
+      <Link
+        href={item.href}
+        title={!isExpanded ? item.label : undefined}
+        className={[
+          "group/item relative flex w-full items-center overflow-hidden rounded-2xl border transition-[transform,border-color,background-color,box-shadow,color] duration-200 ease-out motion-safe:hover:-translate-y-0.5",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]",
+          rowPadding,
+          isActive
+            ? [
+                "border-[#00D4FF]/35 bg-[linear-gradient(180deg,rgba(0,212,255,0.14),rgba(255,255,255,0.04))]",
+                "text-white shadow-[0_0_28px_rgba(0,212,255,0.22),inset_0_0_0_1px_rgba(0,212,255,0.10)]",
+              ].join(" ")
+            : [
+                "border-transparent text-[#dbe9f8]",
+                "hover:border-[#00D4FF]/22 hover:bg-white/[0.045] hover:text-white hover:shadow-[0_0_24px_rgba(0,212,255,0.16),inset_0_0_0_1px_rgba(0,212,255,0.08)]",
+              ].join(" "),
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "pointer-events-none absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full transition-all duration-200",
+            isActive
+              ? "bg-[#00D4FF] opacity-100 shadow-[0_0_18px_rgba(0,212,255,0.9)]"
+              : "bg-[#00D4FF] opacity-0 shadow-[0_0_16px_rgba(0,212,255,0.7)] group-hover/item:opacity-55 group-focus-visible/item:opacity-70",
+          ].join(" ")}
+        />
+
+        <div
+          className={[
+            "pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-200",
+            isActive
+              ? "bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.18),transparent_42%)] opacity-100"
+              : "bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.13),transparent_44%)] opacity-0 group-hover/item:opacity-100 group-focus-visible/item:opacity-100",
+          ].join(" ")}
+        />
+        <div
+          className={[
+            "pointer-events-none absolute inset-px rounded-2xl transition-opacity duration-200",
+            isActive
+              ? "opacity-100 shadow-[inset_0_0_24px_rgba(0,212,255,0.10)]"
+              : "opacity-0 shadow-[inset_0_0_22px_rgba(0,212,255,0.08)] group-hover/item:opacity-100 group-focus-visible/item:opacity-100",
+          ].join(" ")}
+        />
+        <div
+          className={[
+            "relative flex shrink-0 items-center justify-center rounded-xl",
+            iconBoxSize,
+          ].join(" ")}
+        >
+          {isActive && (
+            <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/16 blur-md motion-safe:animate-pulse motion-reduce:animate-none" />
+          )}
+          {!isActive && (
+            <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/12 opacity-0 blur-md transition-opacity duration-200 group-hover/item:opacity-80 group-focus-visible/item:opacity-80" />
+          )}
+
+          <Icon
+            className={[
+              "relative z-10 transition-all duration-300",
+              iconSize,
+              isActive
+                ? "text-[#00D4FF]"
+                : "text-[#8fb8d8] group-hover/item:text-white",
+            ].join(" ")}
+          />
+        </div>
+
+        <div
+          className={[
+            "relative z-10 flex min-w-0 items-center justify-between overflow-hidden transition-all duration-300",
+            isExpanded ? "max-w-[180px] flex-1 opacity-100" : "max-w-0 opacity-0",
+          ].join(" ")}
+        >
+          <span className="truncate whitespace-nowrap text-sm font-medium">
+            {item.label}
+          </span>
+
+          {item.badge ? (
+            <span className="ml-2 rounded-full border border-[#00D4FF]/25 bg-[#00D4FF]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#00D4FF]">
+              {item.badge}
+            </span>
+          ) : null}
+        </div>
+
+        {!isExpanded && (
+          <div className="pointer-events-none absolute left-[78px] top-1/2 z-50 hidden -translate-y-1/2 rounded-xl border border-white/10 bg-[#08111f]/95 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-md group-hover/item:block">
+            {item.label}
+          </div>
+        )}
+      </Link>
+    </li>
   );
 }
