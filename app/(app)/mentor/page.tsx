@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { InteractiveGlowCard, InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 
 import {
@@ -184,15 +185,40 @@ function computeActionPlanProgress(tasks: ActionPlanTask[]) {
   };
 }
 
+function getConversationOutputsErrorMessage(status: number, rawError?: unknown) {
+  const rawMessage = typeof rawError === "string" ? rawError.toLowerCase() : "";
+
+  if (
+    status === 401 ||
+    status === 403 ||
+    rawMessage.includes("unauthorized") ||
+    rawMessage.includes("not authenticated")
+  ) {
+    return "Action plan generation is unavailable right now. Please try again.";
+  }
+
+  if (rawMessage.includes("premium")) {
+    return "Action plan generation is available with Premium. Upgrade when you're ready to turn this thread into next steps.";
+  }
+
+  if (status === 422 && typeof rawError === "string" && rawError.trim()) {
+    return rawError;
+  }
+
+  return "Action plan generation is unavailable right now. Please try again.";
+}
+
 function ConversationRail({
   conversations,
   isLoading,
+  isCreating,
   activeConversationId,
   onSelectConversation,
   onNewConversation,
 }: {
   conversations: Conversation[];
   isLoading: boolean;
+  isCreating: boolean;
   activeConversationId: string | null;
   onSelectConversation: (conversationId: string) => void | Promise<void>;
   onNewConversation: () => void | Promise<void>;
@@ -202,6 +228,7 @@ function ConversationRail({
       <ConversationRailContent
         conversations={conversations}
         isLoading={isLoading}
+        isCreating={isCreating}
         activeConversationId={activeConversationId}
         onSelectConversation={onSelectConversation}
         onNewConversation={onNewConversation}
@@ -213,12 +240,14 @@ function ConversationRail({
 function ConversationRailContent({
   conversations,
   isLoading,
+  isCreating,
   activeConversationId,
   onSelectConversation,
   onNewConversation,
 }: {
   conversations: Conversation[];
   isLoading: boolean;
+  isCreating: boolean;
   activeConversationId: string | null;
   onSelectConversation: (conversationId: string) => void | Promise<void>;
   onNewConversation: () => void | Promise<void>;
@@ -229,23 +258,39 @@ function ConversationRailContent({
         <Button
           type="button"
           onClick={() => void onNewConversation()}
+          disabled={isCreating}
           className="w-full rounded-xl border border-[#5a89b5]/50 bg-[linear-gradient(180deg,rgba(28,76,131,0.95)_0%,rgba(18,56,96,0.95)_100%)] text-[#e8f5ff] shadow-[0_14px_32px_rgba(0,0,0,0.32)] hover:bg-[linear-gradient(180deg,rgba(36,89,149,0.95)_0%,rgba(22,63,108,0.95)_100%)]"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          New Conversation
+          {isCreating ? (
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="mr-2 h-4 w-4" />
+          )}
+          {isCreating ? "Starting..." : "New Conversation"}
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 [scrollbar-color:rgba(79,124,167,0.55)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#4f7ca7]/35 [&::-webkit-scrollbar-track]:bg-transparent">
         {isLoading ? (
-          <div className="flex items-center gap-2 px-2 py-4 text-sm text-[#b5cbe1]/72">
-            <RefreshCw className="h-4 w-4 animate-spin" />
-            Loading conversations...
+          <div className="space-y-2.5 px-1 py-2">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={`conversation-skeleton-${item}`}
+                className="rounded-2xl border border-[#4f7ca7]/18 bg-[rgba(8,18,33,0.58)] px-4 py-3.5"
+              >
+                <Skeleton className="h-4 w-4/5 bg-[#4f7ca7]/24" />
+                <Skeleton className="mt-2 h-3 w-1/2 bg-[#4f7ca7]/16" />
+              </div>
+            ))}
           </div>
         ) : conversations.length === 0 ? (
-          <p className="px-2 py-4 text-sm text-[#b5cbe1]/72">
-            No conversations yet.
-          </p>
+          <div className="rounded-2xl border border-[#4f7ca7]/22 bg-[rgba(8,18,33,0.62)] px-4 py-4 text-sm text-[#b5cbe1]/76">
+            <p className="font-medium text-[#dcecfb]">No mentor history yet.</p>
+            <p className="mt-1 text-xs leading-relaxed text-[#a9c0d6]/72">
+              Start your first conversation and Prospra will keep the thread here
+              for your next decision.
+            </p>
+          </div>
         ) : (
           <div className="space-y-2.5">
             {conversations.map((conversation) => (
@@ -317,6 +362,107 @@ function EmptyState({
   );
 }
 
+function MentorWorkspaceSkeleton() {
+  return (
+    <InteractiveGlowCard className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
+      <div className="flex h-full gap-5">
+        <div className="hidden w-80 shrink-0 space-y-3 rounded-[28px] border border-[#4f7ca7]/18 bg-[rgba(8,18,33,0.58)] p-5 md:block">
+          <Skeleton className="h-11 w-full rounded-xl bg-[#4f7ca7]/22" />
+          {[0, 1, 2].map((item) => (
+            <div
+              key={`boot-rail-${item}`}
+              className="rounded-2xl border border-[#4f7ca7]/16 bg-[rgba(7,18,33,0.62)] p-4"
+            >
+              <Skeleton className="h-4 w-5/6 bg-[#4f7ca7]/22" />
+              <Skeleton className="mt-2 h-3 w-1/2 bg-[#4f7ca7]/16" />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col rounded-[28px] border border-[#4f7ca7]/18 bg-[rgba(7,17,32,0.62)]">
+          <div className="border-b border-[#4f7ca7]/20 p-5">
+            <Skeleton className="h-5 w-32 bg-[#4f7ca7]/22" />
+            <Skeleton className="mt-3 h-3 w-72 max-w-full bg-[#4f7ca7]/16" />
+          </div>
+          <div className="flex-1 space-y-5 p-6">
+            <Skeleton className="h-20 w-3/4 rounded-2xl bg-[#4f7ca7]/18" />
+            <Skeleton className="ml-auto h-16 w-2/3 rounded-2xl bg-brandOrange/24" />
+            <Skeleton className="h-24 w-4/5 rounded-2xl bg-[#4f7ca7]/18" />
+          </div>
+        </div>
+      </div>
+    </InteractiveGlowCard>
+  );
+}
+
+function MentorMessageLoadingState() {
+  return (
+    <div className="space-y-5">
+      <div className="max-w-3xl rounded-2xl rounded-bl-none border border-[#4f7ca7]/22 bg-[rgba(8,19,34,0.62)] px-5 py-4">
+        <Skeleton className="h-4 w-5/6 bg-[#4f7ca7]/22" />
+        <Skeleton className="mt-3 h-4 w-2/3 bg-[#4f7ca7]/16" />
+      </div>
+      <div className="ml-auto max-w-2xl rounded-2xl rounded-br-none bg-brandOrange/18 px-5 py-4">
+        <Skeleton className="h-4 w-64 max-w-full bg-white/20" />
+      </div>
+      <div className="max-w-3xl rounded-2xl rounded-bl-none border border-[#4f7ca7]/22 bg-[rgba(8,19,34,0.62)] px-5 py-4">
+        <Skeleton className="h-4 w-3/4 bg-[#4f7ca7]/22" />
+        <Skeleton className="mt-3 h-4 w-11/12 bg-[#4f7ca7]/16" />
+        <Skeleton className="mt-3 h-4 w-1/2 bg-[#4f7ca7]/16" />
+      </div>
+    </div>
+  );
+}
+
+function MentorThinkingState() {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-3xl rounded-2xl rounded-bl-none border border-[#4f7ca7]/28 bg-[rgba(8,19,34,0.82)] px-4 py-3.5 text-sm text-[#cfe2f4] shadow-[0_8px_24px_rgba(0,0,0,0.22)] md:px-5 md:py-4">
+        <div className="flex items-center gap-3">
+          <RefreshCw className="h-4 w-4 animate-spin text-[#9fdcff]" />
+          <span>Mentor is thinking through the next move...</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConversationEmptyState({ onSuggest }: { onSuggest: (text: string) => void }) {
+  return (
+    <div className="rounded-2xl border border-[#4f7ca7]/24 bg-[rgba(8,19,34,0.66)] px-5 py-5 text-sm text-[#bfd3e6]/78">
+      <p className="font-medium text-[#eef7ff]">This conversation is ready.</p>
+      <p className="mt-1.5 leading-relaxed">
+        Ask one focused question to turn the next founder decision into a clear
+        set of options.
+      </p>
+      <button
+        type="button"
+        onClick={() => onSuggest("What should I focus on this week to create real momentum?")}
+        className="mt-4 rounded-lg border border-[#5a89b5]/40 bg-[rgba(12,29,50,0.72)] px-3 py-2 text-xs font-medium text-[#dcecfb] transition hover:border-[#63a1d6]/48 hover:bg-[rgba(17,39,64,0.76)]"
+      >
+        Start with a weekly focus question
+      </button>
+    </div>
+  );
+}
+
+function OutputsLoadingState() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <Skeleton className="h-3 w-20 bg-[#4f7ca7]/22" />
+        <Skeleton className="mt-2 h-4 w-full bg-[#4f7ca7]/18" />
+        <Skeleton className="mt-2 h-4 w-4/5 bg-[#4f7ca7]/14" />
+      </div>
+      <div>
+        <Skeleton className="h-3 w-24 bg-[#4f7ca7]/22" />
+        <Skeleton className="mt-2 h-4 w-11/12 bg-[#4f7ca7]/18" />
+        <Skeleton className="mt-2 h-4 w-3/4 bg-[#4f7ca7]/14" />
+      </div>
+    </div>
+  );
+}
+
 function MentorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -326,6 +472,9 @@ function MentorPageContent() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isBooting, setIsBooting] = useState(true);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
     null
   );
@@ -353,6 +502,7 @@ function MentorPageContent() {
 
   const conversationIdRef = useRef<string | null>(null);
   const lastConversationRef = useRef<string | null>(null);
+  const lastSubmittedMessageRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -366,7 +516,10 @@ function MentorPageContent() {
     id: "mentor-chat",
     onError: (error: unknown) => {
       console.error("Mentor chat error:", error);
-      setSendError("Message failed to send.");
+      setPendingRetryText(lastSubmittedMessageRef.current);
+      setSendError(
+        "Prospra could not get a mentor response. Check your connection and try again."
+      );
     },
     onFinish: async ({ message }: { message: MentorMessage }) => {
       const assistantText = extractMessageText(message);
@@ -393,9 +546,16 @@ function MentorPageContent() {
   });
 
   const isSending = status === "submitted" || status === "streaming";
+  const isSendBlocked = isSending || isSubmittingMessage;
   const actionPlanProgress = computeActionPlanProgress(actionPlan?.tasks ?? []);
   const intent = searchParams.get("intent");
   const currentConversationId = activeConversationId;
+  const mentorErrorMessage =
+    sendError ||
+    localError ||
+    (chatError
+      ? "Prospra could not complete the mentor response. Please try again."
+      : null);
   const profileDisplayName =
     profile?.profileName || profile?.full_name || "Founder";
   const mentorContextHint = useMemo(
@@ -430,7 +590,10 @@ function MentorPageContent() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      setIsLoadingConversations(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("conversations")
@@ -440,6 +603,8 @@ function MentorPageContent() {
 
     if (error) {
       setLocalError("Failed to load conversation history.");
+      setConversations([]);
+      setIsLoadingConversations(false);
       return;
     }
 
@@ -460,7 +625,7 @@ function MentorPageContent() {
       if (!res.ok) {
         setConversationOutputs(null);
         setOutputsError(
-          payload?.error || "Couldn't load conversation outputs right now."
+          getConversationOutputsErrorMessage(res.status, payload?.error)
         );
         return;
       }
@@ -522,14 +687,20 @@ function MentorPageContent() {
       const payload = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(payload?.error || "Couldn't generate outputs right now.");
+        throw new Error(
+          getConversationOutputsErrorMessage(res.status, payload?.error)
+        );
       }
 
       setConversationOutputs(payload?.outputs ?? null);
       await loadActionPlan(conversationId);
     } catch (error) {
       console.error("[CONVERSATION_OUTPUTS_GENERATE_ERROR]", error);
-      setOutputsError("Couldn't generate outputs right now.");
+      setOutputsError(
+        error instanceof Error
+          ? error.message
+          : "Action plan generation is unavailable right now. Please try again."
+      );
     } finally {
       setGeneratingOutputs(false);
     }
@@ -568,6 +739,7 @@ function MentorPageContent() {
 
   const loadConversation = useCallback(
     async (conversationId: string) => {
+      setIsLoadingConversation(true);
       setActiveConversationId(conversationId);
       conversationIdRef.current = conversationId;
       lastConversationRef.current = conversationId;
@@ -579,35 +751,47 @@ function MentorPageContent() {
       setLocalError(null);
       setBoardError(null);
       setIsSidebarOpen(false);
+      setMessages([] as never);
 
-      const { data, error } = await supabase
-        .from("messages")
-        .select("id, role, content")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("id, role, content")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
 
-      if (error) {
-        setLocalError("Failed to load conversation messages.");
-        return;
+        if (error) {
+          setLocalError(
+            "We couldn't load this conversation. Please retry or start a new one."
+          );
+          return;
+        }
+
+        const hydratedMessages: MentorMessage[] = (data || []).map(
+          (
+            message: { id: string; role: string; content: string | null },
+            index: number
+          ) => ({
+            id: message.id || `${conversationId}-${index}`,
+            role: (message.role as MentorMessage["role"]) ?? "assistant",
+            parts: [{ type: "text", text: message.content ?? "" }],
+          })
+        );
+
+        setMessages(hydratedMessages as never);
+
+        await Promise.all([
+          loadConversationOutputs(conversationId),
+          loadActionPlan(conversationId),
+        ]);
+      } catch (error) {
+        console.error("[CONVERSATION_LOAD_ERROR]", error);
+        setLocalError(
+          "We couldn't load this conversation. Please retry or start a new one."
+        );
+      } finally {
+        setIsLoadingConversation(false);
       }
-
-      const hydratedMessages: MentorMessage[] = (data || []).map(
-        (
-          message: { id: string; role: string; content: string | null },
-          index: number
-        ) => ({
-          id: message.id || `${conversationId}-${index}`,
-          role: (message.role as MentorMessage["role"]) ?? "assistant",
-          parts: [{ type: "text", text: message.content ?? "" }],
-        })
-      );
-
-      setMessages(hydratedMessages as never);
-
-      await Promise.all([
-        loadConversationOutputs(conversationId),
-        loadActionPlan(conversationId),
-      ]);
     },
     [loadActionPlan, loadConversationOutputs, setMessages, supabase]
   );
@@ -621,47 +805,61 @@ function MentorPageContent() {
   );
 
   const createNewConversation = useCallback(async () => {
+    if (isCreatingConversation) return null;
+
+    setIsCreatingConversation(true);
+    setLocalError(null);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
       window.location.assign(buildSharedLoginHref("/mentor"));
+      setIsCreatingConversation(false);
       return null;
     }
 
-    const { data, error } = await supabase
-      .from("conversations")
-      .insert({
-        user_id: user.id,
-        title: "New Conversation",
-      })
-      .select("id, title, created_at, updated_at")
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .insert({
+          user_id: user.id,
+          title: "New Conversation",
+        })
+        .select("id, title, created_at, updated_at")
+        .single();
 
-    if (error || !data) {
-      setLocalError("Could not create a new conversation.");
+      if (error || !data) {
+        setLocalError("Could not create a new conversation. Please try again.");
+        return null;
+      }
+
+      const newConversation = data as Conversation;
+
+      setConversations((prev) => [newConversation, ...prev]);
+      setActiveConversationId(newConversation.id);
+      conversationIdRef.current = newConversation.id;
+      lastConversationRef.current = newConversation.id;
+
+      setMessages([] as never);
+      setConversationOutputs(null);
+      setActionPlan(null);
+      setOutputsError(null);
+      setActionPlanError(null);
+      setSendError(null);
+      setPendingRetryText(null);
+      setBoardError(null);
+
+      return newConversation.id;
+    } catch (error) {
+      console.error("[CONVERSATION_CREATE_ERROR]", error);
+      setLocalError("Could not create a new conversation. Please try again.");
       return null;
+    } finally {
+      setIsCreatingConversation(false);
     }
-
-    const newConversation = data as Conversation;
-
-    setConversations((prev) => [newConversation, ...prev]);
-    setActiveConversationId(newConversation.id);
-    conversationIdRef.current = newConversation.id;
-    lastConversationRef.current = newConversation.id;
-
-    setMessages([] as never);
-    setConversationOutputs(null);
-    setActionPlan(null);
-    setOutputsError(null);
-    setActionPlanError(null);
-    setSendError(null);
-    setPendingRetryText(null);
-    setBoardError(null);
-
-    return newConversation.id;
-  }, [router, setMessages, supabase]);
+  }, [isCreatingConversation, setMessages, supabase]);
 
   const startNewConversation = useCallback(async () => {
     await createNewConversation();
@@ -692,7 +890,7 @@ function MentorPageContent() {
         .single();
 
       if (error || !data) {
-        setLocalError("Could not create a conversation.");
+        setLocalError("Could not create a conversation. Please try again.");
         return null;
       }
 
@@ -705,7 +903,7 @@ function MentorPageContent() {
 
       return newConversation.id;
     },
-    [router, supabase]
+    [supabase]
   );
 
   const updateTaskStatus = useCallback(
@@ -770,15 +968,19 @@ function MentorPageContent() {
   const submitMessage = useCallback(
     async (overrideText?: string) => {
       const messageText = (overrideText ?? input).trim();
-      if (!messageText || isSending) return;
+      if (!messageText || isSendBlocked) return;
 
+      setIsSubmittingMessage(true);
       setSendError(null);
       setPendingRetryText(null);
       setLocalError(null);
       setBoardError(null);
 
       const conversationId = await ensureConversation(messageText);
-      if (!conversationId) return;
+      if (!conversationId) {
+        setIsSubmittingMessage(false);
+        return;
+      }
 
       const isFirstMessageInConversation = messages.length === 0;
 
@@ -789,7 +991,9 @@ function MentorPageContent() {
       });
 
       if (saveUserMessageError) {
+        setPendingRetryText(messageText);
         setLocalError("Could not save your message. Please try again.");
+        setIsSubmittingMessage(false);
         return;
       }
 
@@ -799,6 +1003,7 @@ function MentorPageContent() {
       );
 
       try {
+        lastSubmittedMessageRef.current = messageText;
         sendMessage(
           { text: messageText },
           {
@@ -814,13 +1019,17 @@ function MentorPageContent() {
       } catch (error) {
         console.error("[SEND_MESSAGE_ERROR]", error);
         setPendingRetryText(messageText);
-        setSendError("Message failed to send.");
+        setSendError(
+          "Prospra could not send that message. Check your connection and try again."
+        );
+      } finally {
+        setIsSubmittingMessage(false);
       }
     },
     [
       ensureConversation,
       input,
-      isSending,
+      isSendBlocked,
       messages.length,
       mentorContextHint,
       mode,
@@ -915,95 +1124,100 @@ function MentorPageContent() {
 
   useEffect(() => {
     const boot = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        window.location.assign(buildSharedLoginHref("/mentor"));
-        return;
-      }
+        if (!user) {
+          window.location.assign(buildSharedLoginHref("/mentor"));
+          return;
+        }
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select(
-          "full_name, business_idea, industry, experience_level, goals, profileName"
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select(
+            "full_name, business_idea, industry, experience_level, goals, profileName"
+          )
+          .eq("id", user.id)
+          .maybeSingle();
 
-      if (profileData) {
-        setProfile(profileData as Profile);
-      }
+        if (profileData) {
+          setProfile(profileData as Profile);
+        }
 
-      const { data: conversationData, error } = await supabase
-        .from("conversations")
-        .select("id, title, created_at, updated_at")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false });
+        const { data: conversationData, error } = await supabase
+          .from("conversations")
+          .select("id, title, created_at, updated_at")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false });
 
-      if (error) {
-        setLocalError("Failed to load conversation history.");
+        if (error) {
+          setLocalError(
+            "We couldn't load mentor history. You can still start a new conversation."
+          );
+          setIsLoadingConversations(false);
+          setIsBooting(false);
+          return;
+        }
+
+        const safeConversations = (conversationData as Conversation[]) ?? [];
+        setConversations(safeConversations);
+        setIsLoadingConversations(false);
+
+        try {
+          const creditRes = await fetch("/api/credits");
+          const creditData = await creditRes.json();
+          setIsPremiumUser(Boolean(creditData?.isPremium));
+        } catch {
+          setIsPremiumUser(false);
+        }
+
+        const requestedConversation = searchParams.get("conversation");
+        const nextConversationId =
+          requestedConversation &&
+          safeConversations.some((c) => c.id === requestedConversation)
+            ? requestedConversation
+            : safeConversations[0]?.id || null;
+
+        if (nextConversationId) {
+          await loadConversation(nextConversationId);
+        }
+
+        setIsBooting(false);
+      } catch (error) {
+        console.error("[MENTOR_BOOT_ERROR]", error);
+        setLocalError(
+          "We couldn't prepare the mentor workspace. Refresh or start a new conversation."
+        );
         setIsLoadingConversations(false);
         setIsBooting(false);
-        return;
       }
-
-      const safeConversations = (conversationData as Conversation[]) ?? [];
-      setConversations(safeConversations);
-      setIsLoadingConversations(false);
-
-      try {
-        const creditRes = await fetch("/api/credits");
-        const creditData = await creditRes.json();
-        setIsPremiumUser(Boolean(creditData?.isPremium));
-      } catch {
-        setIsPremiumUser(false);
-      }
-
-      const requestedConversation = searchParams.get("conversation");
-      const nextConversationId =
-        requestedConversation &&
-        safeConversations.some((c) => c.id === requestedConversation)
-          ? requestedConversation
-          : safeConversations[0]?.id || null;
-
-      if (nextConversationId) {
-        await loadConversation(nextConversationId);
-      }
-
-      setIsBooting(false);
     };
 
     void boot();
   }, [loadConversation, router, searchParams, supabase]);
 
   if (isBooting) {
-    return (
-      <InteractiveGlowCard className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          Loading mentor workspace...
-        </div>
-      </InteractiveGlowCard>
-    );
+    return <MentorWorkspaceSkeleton />;
   }
 
   return (
-    <div className="relative mx-auto flex h-[calc(100vh-160px)] w-full max-w-7xl gap-5 md:gap-7">
+    <div className="relative mx-auto flex h-[calc(100vh-32px)] w-full max-w-7xl gap-5 md:h-[calc(100vh-48px)] md:gap-7">
       <div className="pointer-events-none absolute -top-12 left-[28%] h-44 w-44 rounded-full bg-[#00d4ff]/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-8 bottom-8 h-36 w-36 rounded-full bg-[#2b8fcf]/10 blur-3xl" />
       <ConversationRail
         conversations={conversations}
         isLoading={isLoadingConversations}
+        isCreating={isCreatingConversation}
         activeConversationId={activeConversationId}
         onSelectConversation={selectConversation}
         onNewConversation={startNewConversation}
       />
 
-      <InteractiveGlowCard className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
+      <InteractiveGlowCard className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/60 to-transparent" />
-        <div className="border-b border-[#4f7ca7]/25 px-5 py-4 md:px-7 md:py-5">
+        <div className="shrink-0 border-b border-[#4f7ca7]/25 px-5 py-4 md:px-7 md:py-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-start gap-3.5">
               <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -1022,6 +1236,7 @@ function MentorPageContent() {
                   <ConversationRailContent
                     conversations={conversations}
                     isLoading={isLoadingConversations}
+                    isCreating={isCreatingConversation}
                     activeConversationId={activeConversationId}
                     onSelectConversation={selectConversation}
                     onNewConversation={startNewConversation}
@@ -1087,7 +1302,7 @@ function MentorPageContent() {
         {!currentConversationId && messages.length === 0 ? (
           <EmptyState onSuggest={handleSuggestionClick} intent={intent} />
         ) : (
-          <>
+          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(79,124,167,0.55)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#4f7ca7]/35 [&::-webkit-scrollbar-track]:bg-transparent">
             {activeConversationId && (
               <div className="px-5 pt-5 md:px-7 md:pt-6">
                 <InteractiveGlowCard className="rounded-2xl border border-[#4f7ca7]/30 bg-[linear-gradient(180deg,rgba(8,19,34,0.9)_0%,rgba(6,15,28,0.96)_100%)] shadow-[0_16px_48px_rgba(0,0,0,0.34)]">
@@ -1113,21 +1328,38 @@ function MentorPageContent() {
                           generatingOutputs && "animate-spin"
                         )}
                       />
-                      {conversationOutputs ? "Regenerate" : "Generate"}
+                      {generatingOutputs
+                        ? "Generating..."
+                        : conversationOutputs
+                          ? "Regenerate"
+                          : "Generate"}
                     </Button>
                   </div>
 
                   <div className="space-y-5 p-5">
                     {loadingOutputs ? (
-                      <p className="text-sm text-[#b8cde0]/74">
-                        Loading saved outputs...
-                      </p>
+                      <OutputsLoadingState />
                     ) : outputsError ? (
-                      <p className="text-sm text-red-300">{outputsError}</p>
+                      <div className="flex items-start justify-between gap-3 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                          <p>{outputsError}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={generateConversationOutputs}
+                          disabled={generatingOutputs || loadingOutputs || isSending}
+                          className="border-red-300/40 bg-transparent text-red-100"
+                        >
+                          Retry
+                        </Button>
+                      </div>
                     ) : !conversationOutputs ? (
                       <p className="text-sm text-[#b8cde0]/74">
-                        No outputs generated yet. Use Generate to create insights
-                        and a concrete action plan.
+                        No insights or action plan yet. Generate a concise readout
+                        when this thread has enough signal to turn into next steps.
                       </p>
                     ) : (
                       <>
@@ -1187,15 +1419,114 @@ function MentorPageContent() {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-5 py-6 md:px-7 md:py-7">
+            {actionPlan && actionPlan.tasks.length > 0 && (
+              <div className="px-5 pt-5 md:px-7 md:pt-6">
+                <InteractiveGlowSurface className="rounded-2xl border border-[#4f7ca7]/28 bg-[linear-gradient(180deg,rgba(8,18,33,0.88)_0%,rgba(6,15,28,0.94)_100%)] p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-[#f0f8ff]">
+                      Action Plan Progress
+                    </h3>
+                    <p className="text-xs text-[#b6cce1]/78">
+                      {actionPlanProgress.completed}/{actionPlanProgress.total} complete (
+                      {actionPlanProgress.percentage}%)
+                    </p>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full border border-[#4f7ca7]/26 bg-[rgba(6,14,27,0.9)]">
+                    <div
+                      className="h-full bg-brandOrange transition-all"
+                      style={{ width: `${actionPlanProgress.percentage}%` }}
+                    />
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {actionPlan.tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-[#4f7ca7]/24 bg-[rgba(7,18,33,0.86)] px-3.5 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-[#e1f0ff]">{task.title}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9eb9cf]/76">
+                            {task.status.replace("_", " ")}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={Boolean(updatingTaskId) || task.status === "pending"}
+                            className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
+                            onClick={() => void updateTaskStatus(task, "pending")}
+                          >
+                            Pending
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              Boolean(updatingTaskId) || task.status === "in_progress"
+                            }
+                            className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
+                            onClick={() => void updateTaskStatus(task, "in_progress")}
+                          >
+                            In Progress
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              Boolean(updatingTaskId) || task.status === "completed"
+                            }
+                            className="bg-brandOrange text-white shadow-[0_10px_24px_rgba(191,115,33,0.3)] hover:bg-brandOrangeLight"
+                            onClick={() => void updateTaskStatus(task, "completed")}
+                          >
+                            {updatingTaskId === task.id ? "Saving..." : "Complete"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {actionPlanError && (
+                    <p className="mt-2 text-xs text-red-300">{actionPlanError}</p>
+                  )}
+                </InteractiveGlowSurface>
+              </div>
+            )}
+
+            <div className="px-5 py-6 pb-10 md:px-7 md:py-7 md:pb-12">
               <div className="space-y-7">
                 {boardError && (
-                  <div className="rounded-lg border border-red-500/50 bg-red-500/20 p-3 text-sm text-red-200">
-                    {boardError}
+                  <div className="flex items-start justify-between gap-3 rounded-lg border border-red-500/50 bg-red-500/20 p-3 text-sm text-red-200">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{boardError}</span>
+                    </div>
+                    {currentConversationId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={generateBoardReview}
+                        disabled={isBoardLoading}
+                        className="border-red-300/40 bg-transparent text-red-100"
+                      >
+                        Retry
+                      </Button>
+                    )}
                   </div>
                 )}
 
-                {messages.map((message) => {
+                {isLoadingConversation ? (
+                  <MentorMessageLoadingState />
+                ) : messages.length === 0 ? (
+                  <ConversationEmptyState onSuggest={handleSuggestionClick} />
+                ) : (
+                  messages.map((message) => {
                   const content = extractMessageText(
                     message as Partial<MentorMessage>
                   );
@@ -1229,123 +1560,43 @@ function MentorPageContent() {
                             disabled={isBoardLoading}
                             className="self-end rounded-lg border border-[#5a89b5]/40 bg-[linear-gradient(180deg,rgba(27,74,126,0.95)_0%,rgba(18,55,95,0.95)_100%)] px-3 py-1 text-xs text-white hover:bg-[linear-gradient(180deg,rgba(33,85,144,0.96)_0%,rgba(21,61,104,0.96)_100%)]"
                           >
-                            {isBoardLoading ? "Loading Board Input..." : "Get Board Input"}
+                            {isBoardLoading ? "Requesting..." : "Get Board Input"}
                           </Button>
                         )}
                       </div>
                     </div>
                   );
-                })}
-
-                {isSending && (
-                  <div className="text-xs text-[#b8cee1]/72">
-                    Mentor is thinking...
-                  </div>
+                  })
                 )}
+
+                {isSending && <MentorThinkingState />}
 
                 <div ref={messagesEndRef} />
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        <div className="border-t border-[#4f7ca7]/25 bg-[rgba(6,16,30,0.92)] px-5 py-4 md:px-7 md:py-5">
-          {(sendError || localError || chatError) && (
+        <div className="shrink-0 border-t border-[#4f7ca7]/25 bg-[rgba(6,16,30,0.92)] px-5 py-4 md:px-7 md:py-5">
+          {mentorErrorMessage && (
             <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-red-400/50 bg-red-500/10 p-3 text-xs text-red-200">
               <div className="flex items-start gap-2">
                 <AlertCircle className="mt-0.5 h-4 w-4" />
-                <span>{sendError || localError || chatError?.message}</span>
+                <span>{mentorErrorMessage}</span>
               </div>
 
               {pendingRetryText && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
                   className="border-red-300/40 bg-transparent text-red-100"
+                  disabled={isSendBlocked}
                   onClick={() => void submitMessage(pendingRetryText)}
                 >
-                  Retry
+                  {isSendBlocked ? "Retrying..." : "Retry"}
                 </Button>
               )}
-            </div>
-          )}
-
-          {actionPlan && actionPlan.tasks.length > 0 && (
-            <div className="mb-4">
-              <InteractiveGlowSurface className="rounded-2xl border border-[#4f7ca7]/28 bg-[linear-gradient(180deg,rgba(8,18,33,0.88)_0%,rgba(6,15,28,0.94)_100%)] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-[#f0f8ff]">
-                    Action Plan Progress
-                  </h3>
-                  <p className="text-xs text-[#b6cce1]/78">
-                    {actionPlanProgress.completed}/{actionPlanProgress.total} complete (
-                    {actionPlanProgress.percentage}%)
-                  </p>
-                </div>
-
-                <div className="mt-3 h-2 overflow-hidden rounded-full border border-[#4f7ca7]/26 bg-[rgba(6,14,27,0.9)]">
-                  <div
-                    className="h-full bg-brandOrange transition-all"
-                    style={{ width: `${actionPlanProgress.percentage}%` }}
-                  />
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  {actionPlan.tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-[#4f7ca7]/24 bg-[rgba(7,18,33,0.86)] px-3.5 py-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-[#e1f0ff]">{task.title}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9eb9cf]/76">
-                          {task.status.replace("_", " ")}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={updatingTaskId === task.id || task.status === "pending"}
-                          className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
-                          onClick={() => void updateTaskStatus(task, "pending")}
-                        >
-                          Pending
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            updatingTaskId === task.id || task.status === "in_progress"
-                          }
-                          className="border-[#4f7ca7]/35 bg-transparent text-[#cfe2f4] hover:bg-[rgba(17,39,64,0.55)]"
-                          onClick={() => void updateTaskStatus(task, "in_progress")}
-                        >
-                          In Progress
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={
-                            updatingTaskId === task.id || task.status === "completed"
-                          }
-                          className="bg-brandOrange text-white shadow-[0_10px_24px_rgba(191,115,33,0.3)] hover:bg-brandOrangeLight"
-                          onClick={() => void updateTaskStatus(task, "completed")}
-                        >
-                          Complete
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {actionPlanError && (
-                  <p className="mt-2 text-xs text-red-300">{actionPlanError}</p>
-                )}
-              </InteractiveGlowSurface>
             </div>
           )}
 
@@ -1363,20 +1614,27 @@ function MentorPageContent() {
               onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  void submitMessage();
+                  if (!isSendBlocked) {
+                    void submitMessage();
+                  }
                 }
               }}
               placeholder="Ask your mentor what to do next..."
               rows={1}
+              disabled={isSendBlocked}
               className="min-h-[52px] flex-1 resize-none rounded-2xl border border-[#4f7ca7]/30 bg-[rgba(5,14,26,0.96)] px-4 py-3.5 text-sm text-[#e4f1ff] placeholder:text-[#8fa8bf] focus:border-[#6eaedb]/65 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/18"
             />
 
             <Button
               type="submit"
-              disabled={isSending || !input.trim()}
+              disabled={isSendBlocked || !input.trim()}
               className="h-[52px] rounded-xl bg-brandOrange px-4 text-white shadow-[0_12px_28px_rgba(191,115,33,0.34)] hover:bg-brandOrangeLight"
             >
-              <Send className="h-4 w-4" />
+              {isSendBlocked ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </form>
         </div>
@@ -1386,14 +1644,7 @@ function MentorPageContent() {
 }
 
 function MentorPageFallback() {
-  return (
-    <InteractiveGlowCard className="h-[calc(100vh-160px)] w-full rounded-[30px] border border-[#4f7ca7]/22 bg-[linear-gradient(180deg,rgba(7,17,32,0.96)_0%,rgba(4,12,24,0.98)_100%)] p-6 text-[#d8e8f7] shadow-[0_26px_80px_rgba(0,0,0,0.5)]">
-      <div className="flex h-full items-center justify-center gap-2 text-sm text-[#c2d8ec]/78">
-        <RefreshCw className="h-4 w-4 animate-spin" />
-        Loading mentor workspace...
-      </div>
-    </InteractiveGlowCard>
-  );
+  return <MentorWorkspaceSkeleton />;
 }
 
 export default function MentorPage() {

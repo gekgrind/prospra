@@ -8,9 +8,45 @@ type ProfileMenuProps = {
   children?: ReactNode;
 };
 
+type MenuPosition = {
+  left: number;
+  top: number;
+};
+
 export default function ProfileMenu({ children }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function updateMenuPosition() {
+      const buttonRect = buttonRef.current?.getBoundingClientRect();
+      const menuWidth = 176;
+
+      if (!buttonRect) {
+        return;
+      }
+
+      setMenuPosition({
+        left: Math.max(12, buttonRect.right - menuWidth),
+        top: buttonRect.top - 8,
+      });
+    }
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -40,6 +76,7 @@ export default function ProfileMenu({ children }: ProfileMenuProps) {
   return (
     <div ref={containerRef} className="relative w-full">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="block w-full text-left"
@@ -58,10 +95,15 @@ export default function ProfileMenu({ children }: ProfileMenuProps) {
         )}
       </button>
 
-      {open && (
+      {open && menuPosition && (
         <div
+          style={{
+            left: `${menuPosition.left}px`,
+            top: `${menuPosition.top}px`,
+            transform: "translateY(-100%)",
+          }}
           className="
-            absolute right-0 mt-2 z-50 w-44
+            fixed z-50 w-44
             rounded-xl border border-brandBlue/40
             bg-brandNavyDark py-2 shadow-xl backdrop-blur-xl
             animate-fadeIn

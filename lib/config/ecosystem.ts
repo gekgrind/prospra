@@ -4,6 +4,8 @@ export type EcosystemApp =
   | "directorium"
   | "synceri";
 
+export const COMMAND_CENTER_PATH = "/dashboard";
+
 function cleanEnv(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
@@ -32,8 +34,15 @@ export function getSupabaseProjectConfig() {
 
 export function getEcosystemSiteUrl(): string | undefined {
   return (
-    cleanEnv(process.env.NEXT_PUBLIC_APP_URL) ?? "https://entrepreneuria.io"
+    cleanEnv(process.env.NEXT_PUBLIC_AUTH_APP_URL) ??
+    cleanEnv(process.env.NEXT_PUBLIC_APP_URL) ??
+    cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) ??
+    "https://entrepreneuria.io"
   );
+}
+
+export function getCommandCenterUrl(): string {
+  return new URL(COMMAND_CENTER_PATH, getEcosystemSiteUrl()).toString();
 }
 
 export function getEcosystemCookieDomain(): string | undefined {

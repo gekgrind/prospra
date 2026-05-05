@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { ArrowLeftToLine, Sparkles } from "lucide-react";
 
 import ProfileMenu from "@/components/ProfileMenu";
 import { DASHBOARD_NAV_ITEMS } from "@/components/dashboard/nav-items";
+import { getCommandCenterUrl } from "@/lib/config/ecosystem";
 
 type SidebarUser = {
   email?: string | null;
@@ -15,9 +16,17 @@ type SidebarUser = {
   isAdmin?: boolean;
 };
 
+function matchesRoute(pathname: string | null, route: string) {
+  return pathname === route || pathname?.startsWith(`${route}/`);
+}
+
 export function AppSidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(false);
+  const commandCenterHref = getCommandCenterUrl();
+  const hasAuthenticatedUser = Boolean(
+    user.email?.trim() || user.fullName?.trim() || user.avatarUrl?.trim()
+  );
 
   const founderName = useMemo(() => {
     if (user.fullName?.trim()) return user.fullName.trim();
@@ -101,11 +110,14 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
             <ul className="space-y-1.5">
               {DASHBOARD_NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.matchPrefixes
-                  ? item.matchPrefixes.some((prefix) =>
-                      pathname?.startsWith(prefix)
-                    )
-                  : pathname === item.href;
+                const isActive =
+                  item.href === "/dashboard"
+                    ? pathname === item.href
+                    : item.matchPrefixes
+                      ? item.matchPrefixes.some((prefix) =>
+                          matchesRoute(pathname, prefix)
+                        )
+                      : pathname === item.href;
 
                 return (
                   <li key={item.href}>
@@ -194,6 +206,54 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
         </div>
 
         <div className="mt-auto border-t border-white/10 px-3 pb-4 pt-3">
+          {hasAuthenticatedUser ? (
+            <div className="mb-3 border-b border-white/10 pb-3">
+              <Link
+                href={commandCenterHref}
+                prefetch={false}
+                title={!isExpanded ? "Command Center" : undefined}
+                className={[
+                  "group/item relative flex w-full items-center overflow-hidden rounded-2xl border border-transparent text-[#dbe9f8]/85 transition-all duration-300",
+                  isExpanded
+                    ? "gap-3 px-3 py-2.5"
+                    : "justify-center px-2 py-2.5",
+                  "hover:border-[#00D4FF]/20 hover:bg-[#00D4FF]/[0.045] hover:text-white hover:shadow-[0_0_24px_rgba(0,212,255,0.12)]",
+                  "focus-visible:border-[#00D4FF]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]",
+                ].join(" ")}
+              >
+                <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-[3px] rounded-r-full bg-[#00D4FF] opacity-0 shadow-[0_0_16px_rgba(0,212,255,0.8)] transition-all duration-300 group-hover/item:opacity-50 group-focus-visible/item:opacity-70" />
+
+                <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_left_center,rgba(0,212,255,0.13),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
+
+                <div className="pointer-events-none absolute inset-y-0 -left-10 w-10 -skew-x-12 bg-[#00D4FF]/10 opacity-0 blur-sm transition-all duration-700 motion-safe:group-hover/item:left-[115%] motion-safe:group-hover/item:opacity-100 motion-safe:group-focus-visible/item:left-[115%] motion-safe:group-focus-visible/item:opacity-100 motion-reduce:hidden" />
+
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                  <div className="absolute inset-0 rounded-xl bg-[#00D4FF]/12 opacity-0 blur-md transition-opacity duration-300 motion-safe:group-hover/item:animate-pulse group-hover/item:opacity-100 group-focus-visible/item:opacity-100 motion-reduce:group-hover/item:animate-none" />
+                  <ArrowLeftToLine className="relative z-10 h-[18px] w-[18px] text-[#8fb8d8] transition-all duration-300 group-hover/item:text-[#00D4FF] group-focus-visible/item:text-[#00D4FF]" />
+                </div>
+
+                <div
+                  className={[
+                    "relative z-10 flex min-w-0 items-center justify-between overflow-hidden transition-all duration-300",
+                    isExpanded
+                      ? "max-w-[180px] flex-1 opacity-100"
+                      : "max-w-0 opacity-0",
+                  ].join(" ")}
+                >
+                  <span className="truncate whitespace-nowrap text-sm font-medium">
+                    Command Center
+                  </span>
+                </div>
+
+                {!isExpanded && (
+                  <div className="pointer-events-none absolute left-[78px] top-1/2 z-50 hidden -translate-y-1/2 rounded-xl border border-white/10 bg-[#08111f]/95 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-md group-hover/item:block group-focus-visible/item:block">
+                    Command Center
+                  </div>
+                )}
+              </Link>
+            </div>
+          ) : null}
+
           <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
             <ProfileMenu>
               <div
