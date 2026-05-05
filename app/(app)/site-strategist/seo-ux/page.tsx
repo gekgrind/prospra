@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InteractiveGlowSurface } from "@/components/ui/interactive-glow";
 import {
-  runMockSeoUxAnalysis,
+  type SeoUxAnalysisError,
   type SeoUxAnalysisResult,
   type SeoUxFix,
   type SeoUxPriority,
@@ -50,15 +50,36 @@ export default function SeoUxPage() {
     setIsAnalyzing(true);
 
     try {
-      const analysis = await runMockSeoUxAnalysis({
-        url,
-        primaryKeyword,
-        audienceOffer,
+      const response = await fetch("/api/site-strategist/seo-ux", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          primaryKeyword,
+          audienceOffer,
+        }),
       });
-      setResult(analysis);
+      const payload = (await response.json()) as
+        | SeoUxAnalysisResult
+        | SeoUxAnalysisError;
+
+      if (!response.ok || "error" in payload) {
+        setResult(null);
+        setError(
+          "error" in payload
+            ? payload.error
+            : "Prospra could not generate the SEO/UX analysis. Check the page details and try again."
+        );
+        return;
+      }
+
+      setResult(payload);
     } catch {
+      setResult(null);
       setError(
-        "Prospra could not generate the SEO/UX analysis. Check the page details and try again."
+        "We hit a connection issue while starting the SEO/UX analysis. Please try again in a moment."
       );
     } finally {
       setIsAnalyzing(false);
@@ -99,7 +120,7 @@ export default function SeoUxPage() {
               value={url}
               onChange={setUrl}
               placeholder="https://your-site.com/services"
-              type="url"
+              inputMode="url"
             />
             <Field
               id="seo-keyword"
@@ -156,6 +177,7 @@ type FieldProps = {
   onChange: (value: string) => void;
   placeholder: string;
   type?: React.HTMLInputTypeAttribute;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 };
 
 function Field({
@@ -165,6 +187,7 @@ function Field({
   onChange,
   placeholder,
   type = "text",
+  inputMode,
 }: FieldProps) {
   return (
     <label className="block" htmlFor={id}>
@@ -174,6 +197,7 @@ function Field({
       <input
         id={id}
         type={type}
+        inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
@@ -234,7 +258,7 @@ function ResultsPanel({
     <InteractiveGlowSurface className="space-y-4 rounded-[20px] border border-[#4f7ca7]/18 bg-[#07111f]/70 p-4 md:p-5">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
-          Mock analysis
+          Server-side analysis
         </p>
         <h2 className="mt-2 text-lg font-semibold text-white">
           {result.analyzedUrl}

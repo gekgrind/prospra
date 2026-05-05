@@ -27,17 +27,16 @@ export type SeoUxAnalysisResult = {
   prioritizedFixes: SeoUxFix[];
 };
 
-export async function runMockSeoUxAnalysis(
+export type SeoUxAnalysisError = {
+  error: string;
+};
+
+export async function runFallbackSeoUxAnalysis(
   input: SeoUxAnalysisInput
 ): Promise<SeoUxAnalysisResult> {
   const normalizedUrl = normalizeAnalysisUrl(input.url);
   const keyword = input.primaryKeyword.trim();
   const audienceOffer = input.audienceOffer?.trim() || null;
-
-  // TODO: Replace this mock with a real scanner that fetches page HTML,
-  // parses metadata/headings/content, checks accessibility signals, and
-  // connects to performance data from a trusted speed source.
-  await new Promise((resolve) => setTimeout(resolve, 700));
 
   const urlSpecificScore = normalizedUrl.length % 9;
   const keywordSpecificScore = Math.min(keyword.length, 28) % 8;
@@ -49,7 +48,7 @@ export async function runMockSeoUxAnalysis(
     seoScore: Math.min(92, 72 + keywordSpecificScore + urlSpecificScore),
     uxScore: Math.min(90, 70 + urlSpecificScore + (audienceOffer ? 7 : 2)),
     titleMetaFeedback:
-      "Use the primary keyword in a clear title promise, then make the meta description describe the outcome a visitor can expect from this page.",
+      "Fallback analysis: use the primary keyword in a clear title promise, then make the meta description describe the outcome a visitor can expect from this page.",
     headingStructureFeedback:
       "Keep one specific H1, organize the next sections under H2s, and make each heading explain the decision or benefit in that section.",
     keywordAlignment:
@@ -88,6 +87,8 @@ export async function runMockSeoUxAnalysis(
     ],
   };
 }
+
+export const runMockSeoUxAnalysis = runFallbackSeoUxAnalysis;
 
 function normalizeAnalysisUrl(value: string) {
   const trimmed = value.trim();
