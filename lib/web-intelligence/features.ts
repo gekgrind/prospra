@@ -25,12 +25,12 @@ export const WEB_INTELLIGENCE_FEATURES: WebIntelligenceFeature[] = [
   },
   {
     key: "seo-ux",
-    title: "SEO / UX Scoring",
+    title: "SEO/UX Analyzer",
     description:
       "Measure discoverability and user experience with focused scoring signals.",
     status: "Signals calibrating",
     href: "/site-strategist/seo-ux",
-    ctaLabel: "Launch analysis",
+    ctaLabel: "Run analysis",
   },
   {
     key: "funnel-mapping",
