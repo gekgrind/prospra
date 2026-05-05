@@ -18,10 +18,10 @@ jobs:
       - name: Deploy to VPS over SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PROSPRA_HOST }}
-          username: ${{ secrets.PROSPRA_USERNAME }}
-          key: ${{ secrets.PROSPRA_SSH_KEY }}
-          port: ${{ secrets.PROSPRA_PORT }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          key: ${{ secrets.SSH_KEY }}
           command_timeout: 30m
           script: |
             set -e
