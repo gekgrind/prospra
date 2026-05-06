@@ -29,6 +29,12 @@ interface DashboardClientProps {
     content?: string | null;
     entry_text?: string | null;
   }>;
+  recentMentorSessions: Array<{
+    id: string;
+    title: string | null;
+    updated_at: string | null;
+    created_at: string | null;
+  }>;
   founderScore: FounderScoreResult;
   businessHealth: BusinessHealthIndicator[];
   goals: Goal[];
@@ -39,6 +45,14 @@ interface DashboardClientProps {
     limits: { mentor_message: number | null; board_review: number | null };
     usage: { mentor_message: number; board_review: number };
   };
+  dashboardAlerts: Array<{
+    key: string;
+    label: string;
+    message: string;
+  }>;
+  hasFounderScoreInputs: boolean;
+  hasBusinessHealthInputs: boolean;
+  hasWebsiteAnalysis: boolean;
 }
 
 type ProgressTasksInput = Parameters<typeof computeActionPlanProgress>[0];
@@ -167,6 +181,163 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
+function ActionLink({
+  href,
+  children,
+  variant = "primary",
+}: {
+  href: string;
+  children: ReactNode;
+  variant?: "primary" | "secondary";
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition",
+        variant === "primary" &&
+          "border border-[#00D4FF]/25 bg-[#0f223d] text-white shadow-[0_0_24px_rgba(0,212,255,0.12)] hover:border-[#00D4FF]/45 hover:bg-[#143055]",
+        variant === "secondary" &&
+          "border border-white/10 bg-white/5 text-[#dce9f7] hover:bg-white/10"
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function EmptyGuidanceCard({
+  title,
+  body,
+  primaryHref,
+  primaryLabel,
+  secondaryHref,
+  secondaryLabel,
+}: {
+  title: string;
+  body: string;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+}) {
+  return (
+    <InteractiveCard className="rounded-2xl border border-dashed border-[#4f7ca7]/25 bg-[rgba(255,255,255,0.025)] p-5">
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="mt-2 text-sm leading-6 text-[#c7d8ea]/72">{body}</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <ActionLink href={primaryHref}>{primaryLabel}</ActionLink>
+          {secondaryHref && secondaryLabel ? (
+            <ActionLink href={secondaryHref} variant="secondary">
+              {secondaryLabel}
+            </ActionLink>
+          ) : null}
+        </div>
+      </div>
+    </InteractiveCard>
+  );
+}
+
+function DashboardAlertList({
+  alerts,
+}: {
+  alerts: DashboardClientProps["dashboardAlerts"];
+}) {
+  if (alerts.length === 0) return null;
+
+  return (
+    <div className="mb-8 grid gap-3">
+      {alerts.map((alert) => (
+        <div
+          key={alert.key}
+          className="rounded-2xl border border-[#ffe521]/20 bg-[#ffe521]/[0.06] px-4 py-3 text-sm text-[#fff6b0]"
+        >
+          <span className="font-semibold text-white">{alert.label}: </span>
+          {alert.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FirstRunGuidance({
+  hasFounderScoreInputs,
+  hasWebsiteAnalysis,
+  hasMentorSessions,
+  hasActionPlan,
+}: {
+  hasFounderScoreInputs: boolean;
+  hasWebsiteAnalysis: boolean;
+  hasMentorSessions: boolean;
+  hasActionPlan: boolean;
+}) {
+  const items = [
+    !hasFounderScoreInputs
+      ? {
+          title: "Finish your founder profile",
+          body: "Add the missing founder inputs so Prospra can personalize your operating score and recommendations.",
+          href: "/onboarding",
+          label: "Start onboarding",
+        }
+      : null,
+    !hasMentorSessions
+      ? {
+          title: "Open your first Mentor session",
+          body: "Bring one current decision, blocker, or growth question and turn it into a clearer next move.",
+          href: "/mentor",
+          label: "Talk to AI Mentor",
+        }
+      : null,
+    !hasWebsiteAnalysis
+      ? {
+          title: "Run your first Site Strategist scan",
+          body: "Analyze your website so the dashboard can reflect real conversion and clarity signals.",
+          href: "/site-strategist/website-coach",
+          label: "Run Site Strategist",
+        }
+      : null,
+    !hasActionPlan
+      ? {
+          title: "Create an execution lane",
+          body: "Use Mentor to turn your current priority into a concrete action plan with next steps.",
+          href: "/mentor?intent=action-plan",
+          label: "Create an Action Plan",
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  if (items.length === 0) return null;
+
+  return (
+    <ShellCard className="mb-8 p-6 md:p-7">
+      <SectionHeader
+        eyebrow="Launch Setup"
+        title="Complete your operating baseline"
+        description="These first moves give Prospra enough context to make the dashboard useful instead of decorative."
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        {items.map((item) => (
+          <InteractiveCard
+            key={item.title}
+            className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-5"
+          >
+            <p className="text-sm font-semibold text-white">{item.title}</p>
+            <p className="mt-2 text-sm leading-6 text-[#c7d8ea]/72">
+              {item.body}
+            </p>
+            <div className="mt-4">
+              <ActionLink href={item.href}>{item.label}</ActionLink>
+            </div>
+          </InteractiveCard>
+        ))}
+      </div>
+    </ShellCard>
+  );
+}
+
 function UsageTile({
   label,
   used,
@@ -218,12 +389,17 @@ export default function DashboardClient({
   user,
   profile,
   recentEntries,
+  recentMentorSessions,
   founderScore,
   businessHealth,
   goals,
   momentum,
   latestActionPlan,
   usageSnapshot,
+  dashboardAlerts,
+  hasFounderScoreInputs,
+  hasBusinessHealthInputs,
+  hasWebsiteAnalysis,
 }: DashboardClientProps) {
   const rawTasks = Array.isArray(latestActionPlan?.tasks) ? latestActionPlan.tasks : [];
 
@@ -249,6 +425,8 @@ export default function DashboardClient({
     typeof founderScore?.tier === "string" && founderScore.tier.trim().length > 0
       ? founderScore.tier
       : "In Motion";
+  const hasActionPlan = Boolean(latestActionPlan && rawTasks.length > 0);
+  const hasMentorSessions = recentMentorSessions.length > 0;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#07111f] text-white">
@@ -258,6 +436,8 @@ export default function DashboardClient({
       </div>
 
       <div className="relative mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-10">
+        <DashboardAlertList alerts={dashboardAlerts} />
+
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -282,17 +462,17 @@ export default function DashboardClient({
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <Link
-                    href="/dashboard/weekly-review"
+                    href="/mentor"
                     className="inline-flex items-center justify-center rounded-full border border-[#00D4FF]/25 bg-[#0f223d] px-5 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,212,255,0.12)] transition hover:border-[#00D4FF]/45 hover:bg-[#143055]"
                   >
-                    Open Weekly Review
+                    Talk to AI Mentor
                   </Link>
 
                   <Link
-                    href="/dashboard/action-plans"
+                    href="/site-strategist/website-coach"
                     className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-[#dce9f7] transition hover:bg-white/10"
                   >
-                    View Action Plans
+                    Run Site Strategist
                   </Link>
                 </div>
               </div>
@@ -300,16 +480,20 @@ export default function DashboardClient({
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                 <MetricPanel
                   label="Founder Score"
-                  value={`${founderScore.totalScore}`}
-                  helper={`${founderTier} • Your current founder operating score.`}
+                  value={hasFounderScoreInputs ? `${founderScore.totalScore}` : "Setup"}
+                  helper={
+                    hasFounderScoreInputs
+                      ? `${founderTier} - Your current founder operating score.`
+                      : "Add your founder inputs to unlock a real baseline."
+                  }
                 />
                 <MetricPanel
-                  label="Active Goals"
-                  value={`${goals.length}`}
+                  label="Mentor Sessions"
+                  value={`${recentMentorSessions.length}`}
                   helper={
-                    goals.length > 0
-                      ? "Track what’s in motion and keep momentum visible."
-                      : "No goals set yet. Time to give Future You a map."
+                    hasMentorSessions
+                      ? "Recent mentor context is available for your dashboard."
+                      : "No sessions yet. Start with one focused question."
                   }
                 />
               </div>
@@ -352,6 +536,13 @@ export default function DashboardClient({
           />
         </section>
 
+        <FirstRunGuidance
+          hasFounderScoreInputs={hasFounderScoreInputs}
+          hasWebsiteAnalysis={hasWebsiteAnalysis}
+          hasMentorSessions={hasMentorSessions}
+          hasActionPlan={hasActionPlan}
+        />
+
         <section className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-8">
             <motion.section
@@ -375,23 +566,36 @@ export default function DashboardClient({
                       description="A synthesized read on your current operating mode, strengths, and where to focus next."
                     />
 
-                    <p className="text-sm leading-7 text-[#d7e5f4]/78">
-                      {founderScore.summary}
-                    </p>
+                    {hasFounderScoreInputs ? (
+                      <>
+                        <p className="text-sm leading-7 text-[#d7e5f4]/78">
+                          {founderScore.summary}
+                        </p>
 
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {Object.entries(founderScore.subscores).map(([key, value]) => (
-                        <InteractiveCard
-                          key={key}
-                          className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] px-4 py-4"
-                        >
-                          <p className="text-[8px] font-semibold uppercase leading-tight tracking-[0.12em] text-[#8fb8d8] whitespace-normal">
-                            {formatLabel(key)}
-                          </p>
-                          <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-                        </InteractiveCard>
-                      ))}
-                    </div>
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {Object.entries(founderScore.subscores).map(([key, value]) => (
+                            <InteractiveCard
+                              key={key}
+                              className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] px-4 py-4"
+                            >
+                              <p className="text-[8px] font-semibold uppercase leading-tight tracking-[0.12em] text-[#8fb8d8] whitespace-normal">
+                                {formatLabel(key)}
+                              </p>
+                              <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+                            </InteractiveCard>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyGuidanceCard
+                        title="Founder score inputs are missing"
+                        body="Your dashboard is using a neutral placeholder until the core founder inputs are complete. Finish onboarding to make this score meaningful."
+                        primaryHref="/onboarding"
+                        primaryLabel="Start onboarding"
+                        secondaryHref="/mentor"
+                        secondaryLabel="Ask Mentor where to start"
+                      />
+                    )}
                   </div>
                 </div>
               </ShellCard>
@@ -417,8 +621,9 @@ export default function DashboardClient({
                   description="A high-level scan of the areas that are strong, shaky, or quietly begging for attention."
                 />
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {businessHealth.map((metric, index) => (
+                {hasBusinessHealthInputs ? (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {businessHealth.map((metric, index) => (
                     <motion.div
                       key={metric.key}
                       initial={{ opacity: 0, y: 14 }}
@@ -443,7 +648,7 @@ export default function DashboardClient({
                               metric.status === "high" &&
                                 "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
                               metric.status === "medium" &&
-                                "border border-amber-400/20 bg-amber-400/10 text-amber-300",
+                                "border border-[#ffe521]/20 bg-[#ffe521]/10 text-[#fff6b0]",
                               metric.status === "low" &&
                                 "border border-rose-400/20 bg-rose-400/10 text-rose-300"
                             )}
@@ -457,8 +662,18 @@ export default function DashboardClient({
                         </p>
                       </InteractiveCard>
                     </motion.div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyGuidanceCard
+                    title="Business signals are not connected yet"
+                    body="Run a website analysis or complete the founder inputs so this section can reflect real traffic, funnel, and momentum signals."
+                    primaryHref="/site-strategist/website-coach"
+                    primaryLabel="Run Site Strategist"
+                    secondaryHref="/onboarding"
+                    secondaryLabel="Start onboarding"
+                  />
+                )}
               </ShellCard>
             </motion.section>
 
@@ -475,9 +690,14 @@ export default function DashboardClient({
                 />
 
                 {goals.length === 0 ? (
-                  <InteractiveCard className="rounded-2xl border border-dashed border-[#4f7ca7]/20 bg-[rgba(255,255,255,0.02)] p-6 text-sm text-[#c7d8ea]/70">
-                    No goals yet. Add one and let the dashboard start behaving like your second brain instead of a polite wall.
-                  </InteractiveCard>
+                  <EmptyGuidanceCard
+                    title="No activity goals yet"
+                    body="Create one clear action plan before adding more metrics. The dashboard will become sharper once there is a real execution lane to track."
+                    primaryHref="/mentor?intent=action-plan"
+                    primaryLabel="Create an Action Plan"
+                    secondaryHref="/mentor"
+                    secondaryLabel="Talk to AI Mentor"
+                  />
                 ) : (
                   <div className="space-y-4">
                     {goals.map((goal, idx) => {
@@ -535,11 +755,98 @@ export default function DashboardClient({
                 />
 
                 <Link
-                  href="/dashboard/weekly-review"
+                  href="/mentor?intent=weekly-review"
                   className="inline-flex items-center justify-center rounded-full border border-[#00D4FF]/25 bg-[#0f223d] px-5 py-3 text-sm font-semibold text-white transition hover:border-[#00D4FF]/45 hover:bg-[#143055]"
                 >
                   Generate Weekly Review
                 </Link>
+              </ShellCard>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.09, duration: 0.35 }}
+            >
+              <ShellCard className="p-6">
+                <SectionHeader
+                  eyebrow="Website Analysis"
+                  title="Site Strategist signal"
+                  description="Website clarity and conversion signals will show here after your first analysis."
+                />
+
+                {!hasWebsiteAnalysis ? (
+                  <EmptyGuidanceCard
+                    title="No website analysis yet"
+                    body="Run Site Strategist once to replace generic website guidance with a real score and practical next actions."
+                    primaryHref="/site-strategist/website-coach"
+                    primaryLabel="Run Site Strategist"
+                  />
+                ) : (
+                  <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-5">
+                    <p className="text-sm font-semibold text-white">
+                      Website analysis is connected.
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#c7d8ea]/72">
+                      Keep your site signals current as offers, pages, and calls to
+                      action change.
+                    </p>
+                    <div className="mt-4">
+                      <ActionLink href="/site-strategist/website-coach" variant="secondary">
+                        Run another analysis
+                      </ActionLink>
+                    </div>
+                  </InteractiveCard>
+                )}
+              </ShellCard>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.07, duration: 0.35 }}
+            >
+              <ShellCard className="p-6">
+                <SectionHeader
+                  eyebrow="Mentor Sessions"
+                  title="Recent guidance"
+                  description="Your last Mentor conversations will appear here once Prospra has context to carry forward."
+                />
+
+                {!hasMentorSessions ? (
+                  <EmptyGuidanceCard
+                    title="No mentor sessions yet"
+                    body="Start with the decision or blocker that is taking up the most mental space. Prospra will keep the thread ready for follow-through."
+                    primaryHref="/mentor"
+                    primaryLabel="Talk to AI Mentor"
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {recentMentorSessions.map((session, idx) => (
+                      <motion.div
+                        key={session.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 + idx * 0.04, duration: 0.25 }}
+                      >
+                        <Link href={`/mentor?conversation=${session.id}`}>
+                          <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-4 transition hover:border-[#00D4FF]/25">
+                            <p className="text-sm font-semibold text-white">
+                              {session.title?.trim() || "Untitled mentor session"}
+                            </p>
+                            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
+                              {session.updated_at || session.created_at
+                                ? new Date(
+                                    session.updated_at ?? session.created_at ?? ""
+                                  ).toLocaleDateString()
+                                : "Recent"}
+                            </p>
+                          </InteractiveCard>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </ShellCard>
             </motion.section>
 
@@ -583,9 +890,14 @@ export default function DashboardClient({
                 />
 
                 {!latestActionPlan || rawTasks.length === 0 ? (
-                  <InteractiveCard className="rounded-2xl border border-dashed border-[#4f7ca7]/20 bg-[rgba(255,255,255,0.02)] p-5 text-sm leading-6 text-[#c7d8ea]/72">
-                    No active action plan yet. Ask your mentor for a step-by-step action plan to turn ideas into actual motion.
-                  </InteractiveCard>
+                  <EmptyGuidanceCard
+                    title="No action plan yet"
+                    body="Ask Mentor to turn your current priority into a short execution plan. Once tasks exist, progress and next steps will appear here."
+                    primaryHref="/mentor?intent=action-plan"
+                    primaryLabel="Create an Action Plan"
+                    secondaryHref="/dashboard/action-plans"
+                    secondaryLabel="Open Action Plans"
+                  />
                 ) : (
                   <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-5">
                     <div className="flex items-center justify-between gap-3">
@@ -625,9 +937,14 @@ export default function DashboardClient({
                 />
 
                 {recentEntries.length === 0 ? (
-                  <InteractiveCard className="rounded-2xl border border-dashed border-[#4f7ca7]/20 bg-[rgba(255,255,255,0.02)] p-5 text-sm text-[#c7d8ea]/70">
-                    No entries yet.
-                  </InteractiveCard>
+                  <EmptyGuidanceCard
+                    title="No activity yet"
+                    body="Your recent founder notes and activity will appear here after your first session or execution check-in."
+                    primaryHref="/mentor"
+                    primaryLabel="Talk to AI Mentor"
+                    secondaryHref="/site-strategist/website-coach"
+                    secondaryLabel="Run Site Strategist"
+                  />
                 ) : (
                   <div className="space-y-4">
                     {recentEntries.map((entry, idx) => {

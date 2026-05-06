@@ -141,7 +141,7 @@ function MagicBento({
       );
     }
     if (href) {
-      window.location.href = href;
+      window.location.assign(href);
     }
   };
 

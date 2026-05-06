@@ -5,6 +5,8 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
+  Clipboard,
   FileText,
   Gauge,
   Loader2,
@@ -34,24 +36,31 @@ export default function CopyArchitectPage() {
   const [existingCopy, setExistingCopy] = React.useState("");
   const [businessOffer, setBusinessOffer] = React.useState("");
   const [targetAudience, setTargetAudience] = React.useState("");
+  const [copyGoal, setCopyGoal] = React.useState("");
   const [desiredTone, setDesiredTone] =
     React.useState<CopyArchitectTone>("Clear and confident");
   const [result, setResult] = React.useState<CopyArchitectResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [isImproving, setIsImproving] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
 
-  const canImprove = existingCopy.trim().length > 0 && !isImproving;
+  const canGenerate =
+    businessOffer.trim().length > 0 &&
+    targetAudience.trim().length > 0 &&
+    copyGoal.trim().length > 0 &&
+    !isGenerating;
 
-  async function handleImproveCopy(event: React.FormEvent<HTMLFormElement>) {
+  async function handleGenerateCopy(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!existingCopy.trim()) {
-      setError("Add the existing copy before improving the page.");
+    if (!businessOffer.trim() || !targetAudience.trim() || !copyGoal.trim()) {
+      setError("Add the audience, offer, and goal before generating copy.");
       return;
     }
 
     setError(null);
-    setIsImproving(true);
+    setResult(null);
+    setIsGenerating(true);
 
     try {
       const response = await fetch("/api/site-strategist/copy-architect", {
@@ -64,6 +73,7 @@ export default function CopyArchitectPage() {
           existingCopy,
           businessOffer,
           targetAudience,
+          copyGoal,
           desiredTone,
         }),
       });
@@ -95,7 +105,19 @@ export default function CopyArchitectPage() {
         "Copy Architect could not generate recommendations right now. Please try again."
       );
     } finally {
-      setIsImproving(false);
+      setIsGenerating(false);
+    }
+  }
+
+  async function handleCopy(value: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedKey(key);
+      window.setTimeout(() => {
+        setCopiedKey((current) => (current === key ? null : current));
+      }, 1400);
+    } catch {
+      setError("Copy to clipboard is not available in this browser.");
     }
   }
 
@@ -136,40 +158,17 @@ export default function CopyArchitectPage() {
 
       <section className="grid gap-4 xl:grid-cols-[minmax(320px,0.74fr)_minmax(0,1fr)]">
         <InteractiveGlowSurface className="rounded-[20px] border border-[#4f7ca7]/18 bg-[rgba(8,16,30,0.68)] p-4 md:p-5">
-          <form className="space-y-5" onSubmit={handleImproveCopy}>
+          <form className="space-y-5" onSubmit={handleGenerateCopy}>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
                 Copy inputs
               </p>
               <h2 className="mt-2 text-lg font-semibold text-white">
-                Give Copy Architect the page context.
+                Define the message Copy Architect should create.
               </h2>
             </div>
 
-            <Field label="Website/page URL" htmlFor="copy-url">
-              <Input
-                id="copy-url"
-                type="url"
-                inputMode="url"
-                value={websiteUrl}
-                onChange={(event) => setWebsiteUrl(event.target.value)}
-                placeholder="https://example.com/home"
-                className="h-11 border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
-              />
-            </Field>
-
-            <Field label="Existing copy" htmlFor="existing-copy">
-              <Textarea
-                id="existing-copy"
-                value={existingCopy}
-                onChange={(event) => setExistingCopy(event.target.value)}
-                placeholder="Paste the current headline, hero copy, section copy, or full page copy."
-                rows={7}
-                className="resize-none border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
-              />
-            </Field>
-
-            <Field label="Business/offer" htmlFor="business-offer">
+            <Field label="Offer" htmlFor="business-offer">
               <Input
                 id="business-offer"
                 value={businessOffer}
@@ -179,12 +178,22 @@ export default function CopyArchitectPage() {
               />
             </Field>
 
-            <Field label="Target audience" htmlFor="target-audience">
+            <Field label="Audience" htmlFor="target-audience">
               <Input
                 id="target-audience"
                 value={targetAudience}
                 onChange={(event) => setTargetAudience(event.target.value)}
                 placeholder="Example: solo founders preparing to improve conversion"
+                className="h-11 border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
+              />
+            </Field>
+
+            <Field label="Goal" htmlFor="copy-goal">
+              <Input
+                id="copy-goal"
+                value={copyGoal}
+                onChange={(event) => setCopyGoal(event.target.value)}
+                placeholder="Example: book qualified strategy calls"
                 className="h-11 border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
               />
             </Field>
@@ -206,29 +215,58 @@ export default function CopyArchitectPage() {
               </select>
             </Field>
 
+            <Field label="Website/page URL (optional)" htmlFor="copy-url">
+              <Input
+                id="copy-url"
+                type="url"
+                inputMode="url"
+                value={websiteUrl}
+                onChange={(event) => setWebsiteUrl(event.target.value)}
+                placeholder="https://example.com/home"
+                className="h-11 border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
+              />
+            </Field>
+
+            <Field label="Website/context (optional)" htmlFor="existing-copy">
+              <Textarea
+                id="existing-copy"
+                value={existingCopy}
+                onChange={(event) => setExistingCopy(event.target.value)}
+                placeholder="Paste current copy, page notes, positioning details, proof points, objections, or brand context."
+                rows={7}
+                className="resize-none border-[#4f7ca7]/24 bg-[#07111f]/75 text-white placeholder:text-[#8fb8d8]/48 focus-visible:ring-[#00D4FF]/25"
+              />
+            </Field>
+
             {error ? <ErrorPanel message={error} /> : null}
 
             <Button
               type="submit"
-              disabled={!canImprove}
+              disabled={!canGenerate}
               className="h-10 rounded-full bg-[#00D4FF] px-5 text-sm font-semibold text-[#04111f] hover:bg-[#64e7ff] disabled:cursor-not-allowed disabled:bg-[#4f7ca7]/25 disabled:text-[#c7d8ea]/45"
             >
-              {isImproving ? (
+              {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Improving copy
+                  Generating copy
                 </>
               ) : (
                 <>
                   <WandSparkles className="h-4 w-4" />
-                  Improve Copy
+                  Generate Copy
                 </>
               )}
             </Button>
           </form>
         </InteractiveGlowSurface>
 
-        <ResultsPanel result={result} isImproving={isImproving} />
+        <ResultsPanel
+          result={result}
+          error={error}
+          isGenerating={isGenerating}
+          copiedKey={copiedKey}
+          onCopy={handleCopy}
+        />
       </section>
     </div>
   );
@@ -264,12 +302,18 @@ function Field({
 
 function ResultsPanel({
   result,
-  isImproving,
+  error,
+  isGenerating,
+  copiedKey,
+  onCopy,
 }: {
   result: CopyArchitectResult | null;
-  isImproving: boolean;
+  error: string | null;
+  isGenerating: boolean;
+  copiedKey: string | null;
+  onCopy: (value: string, key: string) => void;
 }) {
-  if (isImproving) {
+  if (isGenerating) {
     return (
       <InteractiveGlowSurface className="rounded-[20px] border border-[#4f7ca7]/18 bg-[#07111f]/70 p-4 md:p-5">
         <div className="flex min-h-[540px] flex-col justify-center gap-4">
@@ -280,9 +324,28 @@ function ResultsPanel({
           <div className="h-32 animate-pulse rounded-2xl border border-[#4f7ca7]/18 bg-[#0d2039]/56" />
           <div className="h-40 animate-pulse rounded-2xl border border-[#4f7ca7]/18 bg-[#0d2039]/46" />
           <p className="text-sm text-[#c7d8ea]/72">
-            Reviewing clarity, trust cues, conversion intent, headline strength,
-            and CTA momentum.
+            Drafting headline direction, CTA language, short hero copy, and
+            improvement notes.
           </p>
+        </div>
+      </InteractiveGlowSurface>
+    );
+  }
+
+  if (error && !result) {
+    return (
+      <InteractiveGlowSurface className="rounded-[20px] border border-[#ff7d7d]/22 bg-[#07111f]/70 p-4 md:p-5">
+        <div className="flex min-h-[540px] flex-col justify-center rounded-2xl border border-dashed border-[#ff7d7d]/24 bg-[#2a0f18]/35 px-4 py-6">
+          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[#ff7d7d]/25 bg-[#ff7d7d]/10 text-[#ffd1d1]">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ffb8b8]">
+            Copy generation paused
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-white">
+            Copy Architect needs one clean input pass.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[#ffd1d1]/82">{error}</p>
         </div>
       </InteractiveGlowSurface>
     );
@@ -299,11 +362,11 @@ function ResultsPanel({
             Copy review ready
           </p>
           <h2 className="mt-2 text-lg font-semibold text-white">
-            Improved website copy will appear here.
+            Generated website copy will appear here.
           </h2>
           <p className="mt-3 text-sm leading-6 text-[#c7d8ea]/72">
-            Add the page, current copy, offer, audience, and tone to generate a
-            clearer conversion-focused rewrite set.
+            Add the audience, offer, goal, tone, and any optional context to
+            generate a launch-ready hero message.
           </p>
         </div>
       </InteractiveGlowSurface>
@@ -316,10 +379,10 @@ function ResultsPanel({
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
-              Copy analysis
+              Generated copy
             </p>
             <h2 className="mt-2 text-lg font-semibold text-white">
-              {result.analyzedUrl}
+              {result.analyzedUrl || "Drafted from your offer context"}
             </h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -329,49 +392,69 @@ function ResultsPanel({
         </div>
       </InteractiveGlowSurface>
 
-      <InteractiveGlowSurface className="rounded-[20px] border border-[#4f7ca7]/18 bg-[rgba(8,16,30,0.68)] p-4 md:p-5">
-        <div className="flex items-center gap-2 text-[#9eefff]">
-          <MessageSquareText className="h-4 w-4" />
-          <h3 className="text-sm font-semibold text-white">
-            Before / after comparison
-          </h3>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CopyBlock
+          label="Headline"
+          value={result.headline}
+          copyKey="headline"
+          copiedKey={copiedKey}
+          onCopy={onCopy}
+        />
+        <CopyBlock
+          label="CTA"
+          value={result.cta}
+          copyKey="cta"
+          copiedKey={copiedKey}
+          onCopy={onCopy}
+        />
+      </div>
+
+      <CopyBlock
+        label="Subheadline"
+        value={result.subheadline}
+        copyKey="subheadline"
+        copiedKey={copiedKey}
+        onCopy={onCopy}
+      />
+
+      <InteractiveGlowSurface className="rounded-[20px] border border-[#00D4FF]/22 bg-[#06101d]/72 p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[#9eefff]">
+            <FileText className="h-4 w-4" />
+            <h3 className="text-sm font-semibold text-white">
+              Short website hero copy
+            </h3>
+          </div>
+          <CopyAction
+            value={result.shortWebsiteHeroCopy}
+            copyKey="hero-copy"
+            copiedKey={copiedKey}
+            onCopy={onCopy}
+          />
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <ComparisonBlock label="Before" body={result.comparison.before} />
-          <ComparisonBlock label="After" body={result.comparison.after} />
-        </div>
+        <p className="mt-4 whitespace-pre-line rounded-2xl border border-[#4f7ca7]/18 bg-[#07111f]/62 px-4 py-3 text-sm leading-6 text-[#d7e7f6]/82">
+          {result.shortWebsiteHeroCopy}
+        </p>
       </InteractiveGlowSurface>
+
+      <ListPanel
+        title="Quick improvement notes"
+        items={result.quickImprovementNotes}
+        icon={Gauge}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ListPanel
-          title="Improved headline options"
+          title="Alternate headline options"
           items={result.headlineOptions}
           icon={Sparkles}
         />
         <ListPanel
-          title="Improved subheadline options"
+          title="Alternate subheadline options"
           items={result.subheadlineOptions}
           icon={MessageSquareText}
         />
       </div>
-
-      <InteractiveGlowSurface className="rounded-[20px] border border-[#00D4FF]/22 bg-[#06101d]/72 p-4 md:p-5">
-        <div className="flex items-center gap-2 text-[#9eefff]">
-          <FileText className="h-4 w-4" />
-          <h3 className="text-sm font-semibold text-white">
-            Rewritten hero section
-          </h3>
-        </div>
-        <div className="mt-4 space-y-3">
-          <HeroLine label="Headline" value={result.rewrittenHero.headline} />
-          <HeroLine
-            label="Subheadline"
-            value={result.rewrittenHero.subheadline}
-          />
-          <HeroLine label="Body" value={result.rewrittenHero.body} />
-          <HeroLine label="CTA" value={result.rewrittenHero.cta} />
-        </div>
-      </InteractiveGlowSurface>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ListPanel
@@ -414,21 +497,69 @@ function ScoreBadge({
   );
 }
 
-function ComparisonBlock({ label, body }: { label: string; body: string }) {
+function CopyBlock({
+  label,
+  value,
+  copyKey,
+  copiedKey,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  copyKey: string;
+  copiedKey: string | null;
+  onCopy: (value: string, key: string) => void;
+}) {
   return (
-    <div className="rounded-2xl border border-[#4f7ca7]/18 bg-[#07111f]/62 px-4 py-3">
-      <p className="text-xs font-semibold text-[#9eefff]">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-[#d7e7f6]/80">{body}</p>
-    </div>
+    <InteractiveGlowSurface className="rounded-[20px] border border-[#4f7ca7]/18 bg-[#07111f]/70 p-4 md:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8fb8d8]">
+          {label}
+        </p>
+        <CopyAction
+          value={value}
+          copyKey={copyKey}
+          copiedKey={copiedKey}
+          onCopy={onCopy}
+        />
+      </div>
+      <p className="mt-3 text-sm leading-6 text-[#d7e7f6]/82">{value}</p>
+    </InteractiveGlowSurface>
   );
 }
 
-function HeroLine({ label, value }: { label: string; value: string }) {
+function CopyAction({
+  value,
+  copyKey,
+  copiedKey,
+  onCopy,
+}: {
+  value: string;
+  copyKey: string;
+  copiedKey: string | null;
+  onCopy: (value: string, key: string) => void;
+}) {
+  const isCopied = copiedKey === copyKey;
+
   return (
-    <div className="rounded-2xl border border-[#4f7ca7]/18 bg-[#07111f]/62 px-4 py-3">
-      <p className="text-xs font-semibold text-[#9eefff]">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-[#d7e7f6]/82">{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={() => onCopy(value, copyKey)}
+      className="inline-flex h-8 items-center gap-2 rounded-full border border-[#00D4FF]/20 bg-[#00D4FF]/10 px-3 text-xs font-semibold text-[#9eefff] transition-colors hover:border-[#00D4FF]/40 hover:bg-[#00D4FF]/16 hover:text-white"
+      aria-label={`Copy ${copyKey}`}
+    >
+      {isCopied ? (
+        <>
+          <Check className="h-3.5 w-3.5" />
+          Copied
+        </>
+      ) : (
+        <>
+          <Clipboard className="h-3.5 w-3.5" />
+          Copy
+        </>
+      )}
+    </button>
   );
 }
 

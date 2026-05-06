@@ -14,6 +14,27 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 type Goal = Parameters<typeof computeGoalProgress>[0];
 
+type DashboardAlert = {
+  key: string;
+  label: string;
+  message: string;
+};
+
+function getNumericProfileField(
+  profile: Record<string, unknown>,
+  key: string
+) {
+  const value = profile[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function hasAnyNumericProfileField(
+  profile: Record<string, unknown>,
+  keys: string[]
+) {
+  return keys.some((key) => getNumericProfileField(profile, key) !== null);
+}
+
 function formatError(error: unknown) {
   if (!error) return null;
 
@@ -66,7 +87,10 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const [recentEntriesResult, actionPlansResult, usageSnapshot] =
+  const dashboardAlerts: DashboardAlert[] = [];
+  const profileRecord = profile as Record<string, unknown>;
+
+  const [recentEntriesResult, actionPlansResult, recentConversationsResult, usageSnapshot] =
     await Promise.all([
       supabase
         .from("journal_entries")
@@ -84,17 +108,32 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(1),
 
+      supabase
+        .from("conversations")
+        .select("id, title, updated_at, created_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(3),
+
       getUsageSnapshot(supabase, user.id),
     ]);
 
   const { data: recentEntries, error: recentEntriesError } = recentEntriesResult;
   const { data: actionPlans, error: actionPlansError } = actionPlansResult;
+  const { data: recentConversations, error: recentConversationsError } =
+    recentConversationsResult;
 
   if (recentEntriesError) {
     console.warn(
       "[DASHBOARD_RECENT_ENTRIES_FETCH_ERROR]",
       formatError(recentEntriesError)
     );
+    dashboardAlerts.push({
+      key: "recent-activity",
+      label: "Activity unavailable",
+      message:
+        "Recent founder activity could not be loaded. The rest of your dashboard is still available.",
+    });
   }
 
   if (actionPlansError) {
@@ -102,9 +141,29 @@ export default async function DashboardPage() {
       "[DASHBOARD_ACTION_PLANS_FETCH_ERROR]",
       formatError(actionPlansError)
     );
+    dashboardAlerts.push({
+      key: "action-plans",
+      label: "Action plans unavailable",
+      message:
+        "Your latest action plan could not be loaded. You can still open AI Mentor to create or refresh one.",
+    });
+  }
+
+  if (recentConversationsError) {
+    console.warn(
+      "[DASHBOARD_RECENT_CONVERSATIONS_FETCH_ERROR]",
+      formatError(recentConversationsError)
+    );
+    dashboardAlerts.push({
+      key: "mentor-sessions",
+      label: "Mentor history unavailable",
+      message:
+        "Recent mentor sessions could not be loaded. Starting a new session is still available.",
+    });
   }
 
   const safeRecentEntries = recentEntries ?? [];
+  const safeRecentConversations = recentConversations ?? [];
   const latestActionPlan = actionPlans?.[0] ?? null;
 
   // `plans` is a shared catalog table, not a user-owned goals table.
@@ -118,23 +177,56 @@ export default async function DashboardPage() {
         goalProgressValues.length
       : 0;
 
+  const founderInputKeys = [
+    "clarity_score",
+    "execution_score",
+    "strategy_score",
+    "consistency_score",
+    "market_readiness_score",
+  ];
+
+  const businessHealthInputKeys = [
+    "traffic_score",
+    "lead_flow_score",
+    "clarity_score",
+    "funnel_strength",
+    "momentum_score",
+  ];
+
+  const hasFounderScoreInputs = hasAnyNumericProfileField(
+    profileRecord,
+    founderInputKeys
+  );
+  const hasBusinessHealthInputs = hasAnyNumericProfileField(
+    profileRecord,
+    businessHealthInputKeys
+  );
+  const hasWebsiteAnalysis =
+    getNumericProfileField(profileRecord, "website_score") !== null;
+
   const founderScore = computeFounderScore({
-    clarity: profile.clarity_score ?? 0.5,
-    execution: profile.execution_score ?? 0.5,
-    strategy: profile.strategy_score ?? 0.5,
-    consistency: profile.consistency_score ?? 0.5,
-    marketReadiness: profile.market_readiness_score ?? 0.5,
-    websiteScore: profile.website_score ?? 0,
-    journalConsistency: profile.journal_consistency ?? 0,
+    clarity: getNumericProfileField(profileRecord, "clarity_score") ?? 0.5,
+    execution: getNumericProfileField(profileRecord, "execution_score") ?? 0.5,
+    strategy: getNumericProfileField(profileRecord, "strategy_score") ?? 0.5,
+    consistency:
+      getNumericProfileField(profileRecord, "consistency_score") ?? 0.5,
+    marketReadiness:
+      getNumericProfileField(profileRecord, "market_readiness_score") ?? 0.5,
+    websiteScore: getNumericProfileField(profileRecord, "website_score") ?? 0,
+    journalConsistency:
+      getNumericProfileField(profileRecord, "journal_consistency") ?? 0,
     goalProgress: avgGoalProgress,
   });
 
   const businessHealth = computeBusinessHealthIndicators({
-    trafficScore: profile.traffic_score ?? 60,
-    leadFlowScore: profile.lead_flow_score ?? 50,
-    offerClarityScore: profile.clarity_score ?? 70,
-    funnelStrengthScore: profile.funnel_strength ?? 55,
-    momentumScore: profile.momentum_score ?? 65,
+    trafficScore: getNumericProfileField(profileRecord, "traffic_score") ?? 50,
+    leadFlowScore:
+      getNumericProfileField(profileRecord, "lead_flow_score") ?? 50,
+    offerClarityScore:
+      getNumericProfileField(profileRecord, "clarity_score") ?? 50,
+    funnelStrengthScore:
+      getNumericProfileField(profileRecord, "funnel_strength") ?? 50,
+    momentumScore: getNumericProfileField(profileRecord, "momentum_score") ?? 50,
   });
 
   const momentum = computeMomentumSummary({
@@ -160,12 +252,17 @@ export default async function DashboardPage() {
         user={user}
         profile={profile}
         recentEntries={safeRecentEntries}
+        recentMentorSessions={safeRecentConversations}
         founderScore={founderScore}
         businessHealth={businessHealth}
         goals={goals}
         momentum={momentum}
         latestActionPlan={latestActionPlan}
         usageSnapshot={usageSnapshot}
+        dashboardAlerts={dashboardAlerts}
+        hasFounderScoreInputs={hasFounderScoreInputs}
+        hasBusinessHealthInputs={hasBusinessHealthInputs}
+        hasWebsiteAnalysis={hasWebsiteAnalysis}
       />
       <SuccessCoachDock />
     </>

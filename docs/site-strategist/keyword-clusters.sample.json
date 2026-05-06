@@ -1,0 +1,28 @@
+{
+  "seedKeyword": "startup mentor",
+  "generatedAt": "2026-05-05T00:00:00.000Z",
+  "clusters": [
+    {
+      "cluster": "startup mentor education",
+      "intent": "informational",
+      "keywords": [
+        "startup mentor what is",
+        "startup mentor guide",
+        "startup mentor tips",
+        "startup mentor examples",
+        "startup mentor strategy"
+      ]
+    },
+    {
+      "cluster": "startup mentor evaluation",
+      "intent": "commercial",
+      "keywords": [
+        "best startup mentor",
+        "top startup mentor",
+        "compare startup mentor",
+        "review startup mentor",
+        "alternatives startup mentor"
+      ]
+    }
+  ]
+}

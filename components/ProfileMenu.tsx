@@ -44,17 +44,31 @@ export default function ProfileMenu({ children }: ProfileMenuProps) {
       const buttonRect = buttonRef.current?.getBoundingClientRect();
       const menuWidth = 192;
       const menuHeight = menuRef.current?.offsetHeight ?? 188;
+      const viewportMargin = 12;
+      const gap = 10;
 
       if (!buttonRect) {
         return;
       }
 
+      const alignedLeft = buttonRect.right - menuWidth;
+      const aboveTop = buttonRect.top - gap;
+
       setMenuPosition({
         left: Math.max(
-          12,
-          Math.min(buttonRect.right - menuWidth, window.innerWidth - menuWidth - 12)
+          viewportMargin,
+          Math.min(
+            alignedLeft,
+            window.innerWidth - menuWidth - viewportMargin
+          )
         ),
-        top: Math.max(menuHeight + 12, buttonRect.top - 10),
+        top: Math.max(
+          menuHeight + viewportMargin,
+          Math.min(
+            aboveTop,
+            window.innerHeight - viewportMargin
+          )
+        ),
       });
     }
 

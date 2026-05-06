@@ -58,117 +58,136 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
   }, [user.email, user.fullName]);
 
   return (
-    <aside
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-      className={[
-        "group/sidebar fixed left-0 top-0 z-40 hidden h-screen shrink-0 overflow-hidden border-r border-white/10 md:flex",
-        "bg-[linear-gradient(180deg,rgba(7,17,31,0.98)_0%,rgba(5,12,24,0.985)_46%,rgba(4,10,20,0.99)_100%)]",
-        "text-white backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-out",
-        "shadow-[0_20px_60px_rgba(0,0,0,0.35)]",
-        isExpanded ? "w-[292px]" : "w-[92px]",
-      ].join(" ")}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,212,255,0.16),transparent_30%),radial-gradient(circle_at_18%_80%,rgba(79,124,167,0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%)]" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/10" />
+    <>
+      <aside
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+        className={[
+          "group/sidebar fixed left-0 top-0 z-40 hidden h-screen shrink-0 overflow-hidden border-r border-white/10 md:flex",
+          "bg-[linear-gradient(180deg,rgba(7,17,31,0.98)_0%,rgba(5,12,24,0.985)_46%,rgba(4,10,20,0.99)_100%)]",
+          "text-white backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-out",
+          "shadow-[0_20px_60px_rgba(0,0,0,0.35)]",
+          isExpanded ? "w-[292px]" : "w-[92px]",
+        ].join(" ")}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,212,255,0.16),transparent_30%),radial-gradient(circle_at_18%_80%,rgba(79,124,167,0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%)]" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/10" />
 
-      <div className="relative z-10 flex h-full w-full flex-col">
-        <div className="border-b border-white/10 px-4 py-5">
-          <Link href="/dashboard" className="block">
-            <div
-              className={[
-                "group/logo relative flex items-center rounded-[26px] border border-white/8 transition-all duration-300",
-                isExpanded
-                  ? "gap-3 bg-white/[0.025] px-3 py-3.5"
-                  : "justify-center bg-white/[0.02] px-2 py-3.5",
-              ].join(" ")}
-            >
-              <div className="absolute inset-0 rounded-[26px] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)] opacity-70" />
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#00D4FF]/25 bg-[#00D4FF]/10 shadow-[0_0_30px_rgba(0,212,255,0.16)]">
-                <Sparkles className="relative z-10 h-5 w-5 text-[#00D4FF]" />
-                <div className="absolute inset-0 rounded-2xl bg-[#00D4FF]/12 blur-md" />
-              </div>
-
+        <div className="relative z-10 flex h-full w-full flex-col">
+          <div className="border-b border-white/10 px-4 py-3.5">
+            <Link href="/dashboard" className="block">
               <div
                 className={[
-                  "min-w-0 overflow-hidden transition-all duration-300",
+                  "group/logo relative flex items-center rounded-[26px] border border-white/8 transition-all duration-300",
                   isExpanded
-                    ? "max-w-[180px] translate-x-0 opacity-100"
-                    : "max-w-0 -translate-x-2 opacity-0",
+                    ? "gap-3 bg-white/[0.025] px-3 py-3"
+                    : "justify-center bg-white/[0.02] px-2 py-3",
                 ].join(" ")}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#00D4FF]">
-                  Founder OS
-                </p>
-                <h1 className="mt-1 text-lg font-semibold tracking-[0.04em] text-white">
-                  Prospra
-                </h1>
-                <p className="mt-0.5 truncate text-xs text-[#c7d8ea]/65">
-                  Strategic AI for founders
-                </p>
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="flex-1 overflow-hidden px-3 py-2.5">
-          <div
-            className={[
-              "mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8fb8d8]/75 transition-all duration-300",
-              isExpanded
-                ? "translate-x-0 opacity-100"
-                : "pointer-events-none -translate-x-1 opacity-0",
-            ].join(" ")}
-          >
-            Navigation
-          </div>
-
-          <nav className="mt-1" aria-label="Primary">
-            <ul className="space-y-1">
-              {navItems.map((item) => (
-                <NavItemLink
-                  key={`${item.label}-${item.href}`}
-                  item={item}
-                  isActive={isNavItemActive(pathname, item)}
-                  isExpanded={isExpanded}
-                />
-              ))}
-            </ul>
-          </nav>
-        </div>
-
-        <div className="mt-auto border-t border-white/10 px-3 pb-3 pt-2.5">
-          <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
-            <ProfileMenu>
-              <div
-                className={[
-                  "flex w-full items-center rounded-[18px] transition-all duration-300",
-                  isExpanded ? "gap-2.5 p-1.5" : "justify-center p-1.5",
-                ].join(" ")}
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight text-sm font-bold text-brandNavy shadow-md transition-all">
-                  {avatarInitial}
+                <div className="absolute inset-0 rounded-[26px] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)] opacity-70" />
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#00D4FF]/25 bg-[#00D4FF]/10 shadow-[0_0_30px_rgba(0,212,255,0.16)]">
+                  <Sparkles className="relative z-10 h-5 w-5 text-[#00D4FF]" />
+                  <div className="absolute inset-0 rounded-2xl bg-[#00D4FF]/12 blur-md" />
                 </div>
 
                 <div
                   className={[
-                    "min-w-0 flex-1 overflow-hidden text-left transition-all duration-300",
-                    isExpanded ? "max-w-[170px] opacity-100" : "max-w-0 opacity-0",
+                    "min-w-0 overflow-hidden transition-all duration-300",
+                    isExpanded
+                      ? "max-w-[180px] translate-x-0 opacity-100"
+                      : "max-w-0 -translate-x-2 opacity-0",
                   ].join(" ")}
                 >
-                  <p className="truncate text-sm font-semibold text-white">
-                    {founderName}
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#00D4FF]">
+                    Founder OS
                   </p>
-                  <p className="truncate text-xs text-[#c7d8ea]/55">
-                    {user.email || "No email available"}
+                  <h1 className="mt-1 text-lg font-semibold tracking-[0.04em] text-white">
+                    Prospra
+                  </h1>
+                  <p className="mt-0.5 truncate text-xs text-[#c7d8ea]/65">
+                    Strategic AI for founders
                   </p>
                 </div>
               </div>
-            </ProfileMenu>
+            </Link>
+          </div>
+
+          <div className="flex-1 overflow-hidden px-3 py-2">
+            <div
+              className={[
+                "mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8fb8d8]/75 transition-all duration-300",
+                isExpanded
+                  ? "translate-x-0 opacity-100"
+                  : "pointer-events-none -translate-x-1 opacity-0",
+              ].join(" ")}
+            >
+              Navigation
+            </div>
+
+            <nav className="mt-1" aria-label="Primary">
+              <ul className="space-y-0.5">
+                {navItems.map((item) => (
+                  <NavItemLink
+                    key={`${item.label}-${item.href}`}
+                    item={item}
+                    isActive={isNavItemActive(pathname, item)}
+                    isExpanded={isExpanded}
+                  />
+                ))}
+              </ul>
+            </nav>
+          </div>
+
+          <div className="mt-auto border-t border-white/10 px-3 pb-3 pt-2.5">
+            <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition duration-300 hover:border-[#00D4FF]/14 hover:bg-white/[0.05]">
+              <ProfileMenu>
+                <div
+                  className={[
+                    "flex w-full items-center rounded-[18px] transition-all duration-300",
+                    isExpanded ? "gap-2.5 p-1.5" : "justify-center p-1.5",
+                  ].join(" ")}
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight text-sm font-bold text-brandNavy shadow-md transition-all">
+                    {avatarInitial}
+                  </div>
+
+                  <div
+                    className={[
+                      "min-w-0 flex-1 overflow-hidden text-left transition-all duration-300",
+                      isExpanded
+                        ? "max-w-[170px] opacity-100"
+                        : "max-w-0 opacity-0",
+                    ].join(" ")}
+                  >
+                    <p className="truncate text-sm font-semibold text-white">
+                      {founderName}
+                    </p>
+                    <p className="truncate text-xs text-[#c7d8ea]/55">
+                      {user.email || "No email available"}
+                    </p>
+                  </div>
+                </div>
+              </ProfileMenu>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050c18]/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-18px_45px_rgba(0,0,0,0.36)] backdrop-blur-2xl md:hidden"
+      >
+        <ul className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {navItems.map((item) => (
+            <MobileNavItemLink
+              key={`${item.label}-${item.href}`}
+              item={item}
+              isActive={isNavItemActive(pathname, item)}
+            />
+          ))}
+        </ul>
+      </nav>
+    </>
   );
 }
 
@@ -279,6 +298,55 @@ function NavItemLink({
             {item.label}
           </div>
         )}
+      </Link>
+    </li>
+  );
+}
+
+function MobileNavItemLink({
+  item,
+  isActive,
+}: {
+  item: DashboardNavItem;
+  isActive: boolean;
+}) {
+  const Icon = item.icon;
+  const isExternal = /^https?:\/\//.test(item.href);
+
+  return (
+    <li className="shrink-0">
+      <Link
+        href={item.href}
+        prefetch={isExternal ? false : undefined}
+        className={[
+          "group/mobile-item relative flex min-w-[82px] flex-col items-center justify-center gap-1 rounded-2xl border px-2.5 py-2 text-center transition-[border-color,background-color,box-shadow,color] duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050c18]",
+          isActive
+            ? "border-[#00D4FF]/35 bg-[#00D4FF]/12 text-white shadow-[0_0_24px_rgba(0,212,255,0.18)]"
+            : "border-white/8 bg-white/[0.025] text-[#c7d8ea]/78 hover:border-[#00D4FF]/24 hover:bg-white/[0.055] hover:text-white",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "relative flex h-7 w-7 items-center justify-center rounded-xl",
+            isActive ? "bg-[#00D4FF]/14" : "bg-white/[0.035]",
+          ].join(" ")}
+        >
+          {isActive ? (
+            <span className="absolute inset-0 rounded-xl bg-[#00D4FF]/16 blur-md" />
+          ) : null}
+          <Icon
+            className={[
+              "relative z-10 h-4 w-4 transition-colors duration-200",
+              isActive
+                ? "text-[#00D4FF]"
+                : "text-[#8fb8d8] group-hover/mobile-item:text-white",
+            ].join(" ")}
+          />
+        </span>
+        <span className="max-w-[72px] truncate text-[11px] font-medium leading-tight">
+          {item.label}
+        </span>
       </Link>
     </li>
   );

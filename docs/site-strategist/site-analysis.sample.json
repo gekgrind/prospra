@@ -1,0 +1,23 @@
+{
+  "url": "https://example.com/",
+  "fetchedAt": "2026-05-05T00:00:00.000Z",
+  "structure": {
+    "title": "Example Domain",
+    "metaDescription": "Example Domain",
+    "headingCount": 1,
+    "h1Count": 1,
+    "hasNavigation": false,
+    "hasFooter": false
+  },
+  "messaging": {
+    "hasOfferSignal": false,
+    "hasTrustSignal": false,
+    "hasPricingSignal": false,
+    "summary": "Offer positioning is unclear. Trust signals are limited. Pricing language is not obvious."
+  },
+  "ctas": {
+    "count": 1,
+    "hasStrongCtaLanguage": false,
+    "primary": ["learn more"]
+  }
+}

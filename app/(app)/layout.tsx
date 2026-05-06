@@ -51,7 +51,7 @@ export default async function AppLayout({
       <AppSidebar user={sidebarUser} />
 
       <main className="min-w-0 md:pl-[92px]">
-        <div className="min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 xl:px-10">
+        <div className="min-h-screen px-4 pb-28 pt-4 md:px-6 md:py-6 lg:px-8 xl:px-10">
           {children}
         </div>
       </main>

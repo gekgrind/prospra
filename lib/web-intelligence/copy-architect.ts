@@ -10,6 +10,7 @@ export type CopyArchitectInput = {
   existingCopy: string;
   businessOffer: string;
   targetAudience: string;
+  copyGoal: string;
   desiredTone: CopyArchitectTone;
 };
 
@@ -22,6 +23,11 @@ export type CopyArchitectResult = {
   analyzedUrl: string;
   clarityScore: number;
   conversionScore: number;
+  headline: string;
+  subheadline: string;
+  cta: string;
+  shortWebsiteHeroCopy: string;
+  quickImprovementNotes: string[];
   comparison: CopyArchitectComparison;
   headlineOptions: string[];
   subheadlineOptions: string[];
@@ -45,6 +51,7 @@ export type CopyArchitectRequestBody = {
   existingCopy?: unknown;
   businessOffer?: unknown;
   targetAudience?: unknown;
+  copyGoal?: unknown;
   desiredTone?: unknown;
 };
 
@@ -103,10 +110,19 @@ export function validateCopyArchitectInput(
   const existingCopy = getStringField(body, "existingCopy");
   const businessOffer = getStringField(body, "businessOffer");
   const targetAudience = getStringField(body, "targetAudience");
+  const copyGoal = getStringField(body, "copyGoal");
   const desiredTone = body.desiredTone;
 
-  if (!existingCopy) {
-    return { error: "Existing copy is required." };
+  if (!businessOffer) {
+    return { error: "Offer is required." };
+  }
+
+  if (!targetAudience) {
+    return { error: "Audience is required." };
+  }
+
+  if (!copyGoal) {
+    return { error: "Goal is required." };
   }
 
   if (!isCopyArchitectTone(desiredTone)) {
@@ -125,6 +141,7 @@ export function validateCopyArchitectInput(
       existingCopy,
       businessOffer,
       targetAudience,
+      copyGoal,
       desiredTone,
     },
   };
@@ -137,6 +154,7 @@ export async function analyzeCopyArchitectFallback(
   const existingCopy = input.existingCopy.trim();
   const offer = input.businessOffer.trim();
   const audience = input.targetAudience.trim();
+  const goal = input.copyGoal.trim();
   const tone = input.desiredTone;
   const promise = getPromisePhrase(offer);
   const audiencePhrase = audience || "the right-fit founder";
@@ -169,11 +187,23 @@ export async function analyzeCopyArchitectFallback(
 
   const primaryHeadline = `${promise} for ${audiencePhrase}`;
   const cta = getRecommendedCta(tone);
+  const primarySubheadline = `Show ${audiencePhrase} exactly how ${offer || "your offer"} helps them reach ${goal || "the next step"} with less guesswork.`;
+  const shortWebsiteHeroCopy = `${primaryHeadline}\n\n${primarySubheadline}\n\n${cta}`;
+  const quickImprovementNotes = [
+    "Lead with the audience and outcome before explaining features.",
+    "Keep the CTA tied to a useful next step, not a generic transaction.",
+    "Add one proof cue near the hero to reduce hesitation before the click.",
+  ];
 
   return {
     analyzedUrl,
     clarityScore,
     conversionScore,
+    headline: primaryHeadline,
+    subheadline: primarySubheadline,
+    cta,
+    shortWebsiteHeroCopy,
+    quickImprovementNotes,
     comparison: {
       before: summarizeBeforeCopy(existingCopy),
       after: `${primaryHeadline}. The revised message names the audience, clarifies the outcome, and gives visitors a lower-friction next step.`,
@@ -190,7 +220,7 @@ export async function analyzeCopyArchitectFallback(
     ],
     rewrittenHero: {
       headline: primaryHeadline,
-      subheadline: `Show ${audiencePhrase} exactly how ${offer || "your offer"} helps them move forward with less guesswork.`,
+      subheadline: primarySubheadline,
       body: `This version leads with the outcome, supports it with practical context, and keeps the ask focused. It gives visitors enough confidence to understand the offer before they are asked to take action.`,
       cta,
     },
@@ -247,6 +277,7 @@ function normalizeCopyArchitectInput(
     existingCopy: input.existingCopy.trim(),
     businessOffer: input.businessOffer.trim(),
     targetAudience: input.targetAudience.trim(),
+    copyGoal: input.copyGoal.trim(),
     desiredTone: input.desiredTone,
   };
 }
@@ -269,9 +300,10 @@ Inputs:
 - Website URL: ${input.websiteUrl || "Not provided"}
 - Business/offer: ${input.businessOffer || "Not provided"}
 - Target audience: ${input.targetAudience || "Not provided"}
+- Goal: ${input.copyGoal || "Not provided"}
 - Desired tone: ${input.desiredTone}
-- Existing copy:
-${input.boundedExistingCopy}
+- Optional website/context:
+${input.boundedExistingCopy || "Not provided"}
 
 Return strict JSON only. Do not include markdown, commentary, or code fences.
 
@@ -280,6 +312,11 @@ Expected JSON schema:
   "analyzedUrl": "string",
   "clarityScore": 0,
   "conversionScore": 0,
+  "headline": "string",
+  "subheadline": "string",
+  "cta": "string",
+  "shortWebsiteHeroCopy": "string",
+  "quickImprovementNotes": ["string", "string", "string"],
   "comparison": {
     "before": "string",
     "after": "string"
@@ -299,8 +336,10 @@ Expected JSON schema:
 
 Rules:
 - clarityScore and conversionScore must be integers from 0 to 100.
+- headline, subheadline, cta, shortWebsiteHeroCopy, and quickImprovementNotes are the primary UI outputs.
 - Return 3 to 5 headlineOptions.
 - Return 3 to 5 subheadlineOptions.
+- Return 3 to 5 quickImprovementNotes.
 - Return 3 to 5 trustBuildingSuggestions.
 - Return 3 to 5 ctaSuggestions.
 - Return 3 to 5 notes explaining why the rewrite works.
@@ -333,6 +372,11 @@ async function generateCopyWithAI(
       analyzedUrl: z.string(),
       clarityScore: z.number().int().min(0).max(100),
       conversionScore: z.number().int().min(0).max(100),
+      headline: z.string().min(1),
+      subheadline: z.string().min(1),
+      cta: z.string().min(1),
+      shortWebsiteHeroCopy: z.string().min(1),
+      quickImprovementNotes: z.array(z.string().min(1)).min(3).max(5),
       comparison: z.object({
         before: z.string().min(1),
         after: z.string().min(1),
@@ -386,6 +430,16 @@ function sanitizeCopyArchitectResult(
     analyzedUrl: cleanText(result.analyzedUrl),
     clarityScore: clampPercentage(result.clarityScore),
     conversionScore: clampPercentage(result.conversionScore),
+    headline: cleanText(result.headline || result.rewrittenHero.headline),
+    subheadline: cleanText(result.subheadline || result.rewrittenHero.subheadline),
+    cta: cleanText(result.cta || result.rewrittenHero.cta),
+    shortWebsiteHeroCopy: cleanMultilineText(
+      result.shortWebsiteHeroCopy ||
+        `${result.rewrittenHero.headline}\n\n${result.rewrittenHero.subheadline}\n\n${result.rewrittenHero.cta}`
+    ),
+    quickImprovementNotes: sanitizeList(
+      result.quickImprovementNotes?.length ? result.quickImprovementNotes : result.notes
+    ),
     comparison: {
       before: cleanText(result.comparison.before),
       after: cleanText(result.comparison.after),
@@ -435,6 +489,14 @@ function boundExistingCopy(value: string) {
 
 function cleanText(value: string) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function cleanMultilineText(value: string) {
+  return String(value ?? "")
+    .split(/\r?\n/)
+    .map(cleanText)
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function sanitizeList(items: string[]) {

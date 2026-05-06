@@ -4,7 +4,6 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { generateConversationTitle } from "./get-title";
 import { getWebsiteBrainContext } from "@/lib/website-brain/retrieve";
 import { getBillingProfile } from "@/lib/identity/profile";
@@ -14,7 +13,7 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { buildMentorContext } from "@/lib/mentor/build-mentor-context";
 import { buildMentorSystemPrompt } from "@/lib/mentor/build-mentor-system-prompt";
 
-type Database = any;
+type AppSupabaseClient = SupabaseClient;
 
 /* -------------------------------------------------------------
    TYPES
@@ -185,7 +184,7 @@ function hasPremiumAccess(profile: ProfileRow | null | undefined): boolean {
    SUPABASE CLIENT
 ------------------------------------------------------------- */
 
-function createClient(request: Request) {
+function createClient(request: Request): AppSupabaseClient {
   const { url, anonKey } = getSupabaseProjectConfig();
 
   return createServerClient(url, anonKey, {
@@ -200,10 +199,11 @@ function createClient(request: Request) {
           options?: Record<string, unknown>;
         }>
       ) {
+        void _cookies;
         // No-op in this route handler.
       },
     },
-  });
+  }) as unknown as SupabaseClient;
 }
 
 /* -------------------------------------------------------------
@@ -211,7 +211,7 @@ function createClient(request: Request) {
 ------------------------------------------------------------- */
 
 async function buildFounderContext(
-  supabase: SupabaseClient<Database>,
+  supabase: AppSupabaseClient,
   userId: string,
   userMetadata?: Record<string, unknown>
 ): Promise<FounderContext> {
@@ -275,7 +275,7 @@ async function getMentorMemoryContext({
   currentMessage,
   limit = 6,
 }: {
-  supabase: SupabaseClient<Database>;
+  supabase: AppSupabaseClient;
   userId: string;
   currentMessage: string;
   limit?: number;
@@ -322,7 +322,7 @@ async function extractMemories(
 }
 
 async function saveMemories(
-  supabase: SupabaseClient<Database>,
+  supabase: AppSupabaseClient,
   userId: string,
   memories: string[]
 ): Promise<void> {
@@ -341,7 +341,7 @@ async function saveMemories(
 }
 
 async function enforceUsageLimit(
-  supabase: SupabaseClient<Database>,
+  supabase: AppSupabaseClient,
   userId: string,
   usageType: UsageType
 ): Promise<UsageCheckResult> {
@@ -403,7 +403,7 @@ async function enforceUsageLimit(
 }
 
 async function incrementUsageCounter(
-  supabase: SupabaseClient<Database>,
+  supabase: AppSupabaseClient,
   userId: string,
   profile: ProfileRow | null
 ): Promise<void> {
@@ -422,7 +422,7 @@ async function incrementUsageCounter(
 }
 
 async function recordUsageEvent(
-  supabase: SupabaseClient<Database>,
+  supabase: AppSupabaseClient,
   userId: string,
   usageType: UsageType,
   quantity: number,
@@ -452,7 +452,9 @@ function buildSystemPrompt(
     profileContext: string;
     websiteContext: string;
     memoryContext: string;
+    sharedInsightContext: string;
     actionPlanContext: string;
+    mentorContextHint: string;
   }
 ) {
   const {
@@ -461,8 +463,15 @@ function buildSystemPrompt(
     profileContext,
     websiteContext,
     memoryContext,
+    sharedInsightContext,
     actionPlanContext,
+    mentorContextHint,
   } = context;
+
+  const mentorHintBlock =
+    mentorContextHint.trim().length > 0
+      ? `\nMentor Context Hint:\n${mentorContextHint}\n`
+      : "";
 
   switch (mode) {
     case "website-coach":
@@ -472,7 +481,7 @@ ${mentorContextPrompt}
 You are **Prospra Website Coach**, an expert at improving clarity, UX, and conversion.
 
 Respond with:
-**Insight** (2–3 sentences)
+**Insight** (2-3 sentences)
 **What's Working**
 - bullet
 - bullet
@@ -494,9 +503,12 @@ ${profileContext}
 Memory Context:
 ${memoryContext}
 
+Cross-app intelligence:
+${sharedInsightContext}
+
 Action Plan Context:
 ${actionPlanContext}
-
+${mentorHintBlock}
 Website Context:
 ${websiteContext}
 `;
@@ -522,9 +534,12 @@ ${profileContext}
 Memory Context:
 ${memoryContext}
 
+Cross-app intelligence:
+${sharedInsightContext}
+
 Action Plan Context:
 ${actionPlanContext}
-
+${mentorHintBlock}
 Website Context:
 ${websiteContext}
 `;
@@ -536,7 +551,7 @@ ${mentorContextPrompt}
 You are **Prospra Funnel Architect**.
 
 Your job:
-- Map the user’s funnel
+- Map the user's funnel
 - Identify leaks
 - Suggest fixes
 - Output a funnel diagram
@@ -557,9 +572,12 @@ ${profileContext}
 Memory Context:
 ${memoryContext}
 
+Cross-app intelligence:
+${sharedInsightContext}
+
 Action Plan Context:
 ${actionPlanContext}
-
+${mentorHintBlock}
 Website Context:
 ${websiteContext}
 `;
@@ -572,7 +590,7 @@ You are **Prospra CTA Analyzer**, a senior conversion copywriter.
 
 Workflow:
 1. Analyze the CTA for clarity, emotion, action, urgency.
-2. Suggest 2–3 improved versions.
+2. Suggest 2-3 improved versions.
 3. Provide coaching.
 4. ALWAYS output a CTA score JSON block at the end EXACTLY like this:
 
@@ -601,9 +619,12 @@ ${profileContext}
 Memory Context:
 ${memoryContext}
 
+Cross-app intelligence:
+${sharedInsightContext}
+
 Action Plan Context:
 ${actionPlanContext}
-
+${mentorHintBlock}
 Website Context:
 ${websiteContext}
 `;
@@ -612,7 +633,7 @@ ${websiteContext}
       return `
 ${mentorContextPrompt}
 
-You are **Directorium Board Review** — Prospra's strategic escalation mode.
+You are **Directorium Board Review**, Prospra's strategic escalation mode.
 
 Respond with:
 **Board Verdict** (1 concise paragraph)
@@ -633,6 +654,10 @@ ${websiteContext}
 
 Memory Context:
 ${memoryContext}
+
+Cross-app intelligence:
+${sharedInsightContext}
+${mentorHintBlock}
 `;
 
     default:
@@ -643,7 +668,7 @@ You are **Prospra**, an elite entrepreneurial mentor.
 
 Respond with:
 
-**Mentor Insight (1–2 sentences)**
+**Mentor Insight (1-2 sentences)**
 **Key Points**
 - bullet
 - bullet
@@ -656,7 +681,7 @@ Respond with:
 
 Tone: warm, human, Gen-Z friendly, practical.
 Use founder context to tailor stage-appropriate, audience-aware, goal-focused advice.
-Reference memories + website when helpful.
+Reference memories and website context when helpful.
 Do not recite profile details unless directly helpful to the answer.
 
 Founder Context:
@@ -668,9 +693,12 @@ ${profileContext}
 Memory Context:
 ${memoryContext}
 
+Cross-app intelligence:
+${sharedInsightContext}
+
 Action Plan Context:
 ${actionPlanContext}
-
+${mentorHintBlock}
 Website Context:
 ${websiteContext}
 `;
@@ -703,6 +731,10 @@ export async function POST(req: Request) {
     const raw = parsedBody.messages;
     const incoming = parsedBody.conversationId ?? null;
     const mode = typeof parsedBody.mode === "string" ? parsedBody.mode : "mentor";
+    const mentorContextHint =
+      typeof parsedBody.mentorContextHint === "string"
+        ? parsedBody.mentorContextHint.trim()
+        : "";
 
     if (!Array.isArray(raw)) {
       return new Response(
@@ -742,6 +774,8 @@ export async function POST(req: Request) {
     let isPremium = false;
     let conversationId = incoming ?? null;
 
+    const sharedInsightContext = "No shared intelligence insights available.";
+
     const usageType: UsageType =
       mode === "board-review" ? "board_review" : "mentor_message";
 
@@ -750,6 +784,7 @@ export async function POST(req: Request) {
         ?.content ?? "";
 
     /* -------------------- USER LOGIC -------------------- */
+
     if (user) {
       const founderProfile = await buildFounderContext(
         supabase,
@@ -883,7 +918,9 @@ export async function POST(req: Request) {
       profileContext,
       websiteContext,
       memoryContext,
+      sharedInsightContext,
       actionPlanContext,
+      mentorContextHint,
     });
 
     /* -------------------- STREAM RESPONSE -------------------- */

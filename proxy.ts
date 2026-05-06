@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { buildSharedLoginHref } from "@/lib/auth/redirects";
-import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
+import {
+  getEcosystemAppUrl,
+  getSupabaseProjectConfig,
+} from "@/lib/config/ecosystem";
 import {
   applySharedAuthCookieOptions,
   getSharedAuthCookieOptions,
@@ -34,11 +37,22 @@ const PROTECTED_PATH_PREFIXES = [
   "/onboarding",
   "/profile",
   "/settings",
+  "/site-strategist",
+  "/tools",
   "/upgrade",
 ];
 
 function buildLoginRedirectUrl(request: NextRequest) {
-  return buildSharedLoginHref(request.nextUrl.href);
+  const prospraAppUrl = getEcosystemAppUrl("prospra");
+
+  if (!prospraAppUrl) {
+    return buildSharedLoginHref(request.nextUrl.href);
+  }
+
+  const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const nextUrl = new URL(nextPath, prospraAppUrl).toString();
+
+  return buildSharedLoginHref(nextUrl);
 }
 
 function isStaticAsset(pathname: string) {
