@@ -1,6 +1,6 @@
 // /app/api/chat/route.ts
 
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -315,10 +315,48 @@ async function extractMemories(
   assistantMessage: string
 ): Promise<MemoryExtractionResult> {
   void modelName;
-  void userMessage;
-  void assistantMessage;
 
-  return { memories: [] };
+  if (!userMessage.trim()) {
+    return { memories: [] };
+  }
+
+  try {
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You extract durable facts about a founder and their business from a mentor chat exchange.
+
+Return a JSON array of 0-3 short strings. Each string is one standalone fact worth remembering across future sessions (e.g. business model, audience, pricing, goals, constraints, decisions made). Ignore small talk, questions, and anything only relevant to this single exchange. If nothing is worth remembering, return [].
+
+Respond with ONLY the JSON array, no other text.`,
+        },
+        {
+          role: "user",
+          content: `Founder said:\n${userMessage.slice(0, 2000)}\n\nMentor replied:\n${assistantMessage.slice(0, 2000)}`,
+        },
+      ],
+    });
+
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return { memories: [] };
+
+    const parsed: unknown = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return { memories: [] };
+
+    const memories = parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0 && item.length <= 500)
+      .slice(0, 3);
+
+    return { memories };
+  } catch (err) {
+    console.error("MEMORY_EXTRACTION_ERROR:", err);
+    return { memories: [] };
+  }
 }
 
 async function saveMemories(
