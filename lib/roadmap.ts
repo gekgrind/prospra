@@ -48,11 +48,9 @@ export type OverallProgress = {
   percent: number;
 };
 
-const DEFAULT_COMPLETED_STEP_IDS: string[] = [
-  "define-vision",
-  "audience-snapshot",
-  "simple-offer",
-];
+// Real progress lives in the roadmap_progress table (see /api/roadmap-progress);
+// the default roadmap starts with nothing completed.
+const DEFAULT_COMPLETED_STEP_IDS: string[] = [];
 
 export function getDefaultRoadmap(): RoadmapData {
   const stages: RoadmapStage[] = [

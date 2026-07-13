@@ -1,6 +1,8 @@
 // app/dashboard/business-roadmap/page.tsx
 "use client";
 
+import * as React from "react";
+
 import {
   getDefaultRoadmap,
   computeOverallProgress,
@@ -15,8 +17,70 @@ import {
 import { Card } from "@/components/ui/card";
 
 export default function BusinessRoadmapPage() {
-  const { stages, steps, progress } = getDefaultRoadmap();
+  const { stages, steps } = getDefaultRoadmap();
 
+  const [completedStepIds, setCompletedStepIds] = React.useState<string[]>([]);
+  const [savingStepId, setSavingStepId] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadProgress() {
+      try {
+        const res = await fetch("/api/roadmap-progress");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.completedStepIds)) {
+          setCompletedStepIds(data.completedStepIds);
+        }
+      } catch {
+        // Leave progress empty; the page still renders.
+      }
+    }
+
+    loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggleStep(stepId: string) {
+    if (savingStepId) return;
+
+    const wasCompleted = completedStepIds.includes(stepId);
+    const optimistic = wasCompleted
+      ? completedStepIds.filter((id) => id !== stepId)
+      : [...completedStepIds, stepId];
+
+    setSavingStepId(stepId);
+    setError(null);
+    setCompletedStepIds(optimistic);
+
+    try {
+      const res = await fetch("/api/roadmap-progress", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stepId, completed: !wasCompleted }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save");
+      }
+
+      const data = await res.json();
+      if (Array.isArray(data.completedStepIds)) {
+        setCompletedStepIds(data.completedStepIds);
+      }
+    } catch {
+      setCompletedStepIds(completedStepIds);
+      setError("Could not save your progress. Please try again.");
+    } finally {
+      setSavingStepId(null);
+    }
+  }
+
+  const progress = { completedStepIds };
   const overall = computeOverallProgress(stages, steps, progress);
 
   const stageProgressList = stages
@@ -31,6 +95,12 @@ export default function BusinessRoadmapPage() {
         title="Your Business Roadmap"
         description="A simple, staged path from idea to scale. Check your progress, see what’s next, and plug in tools that make each step easier."
       />
+
+      {error ? (
+        <p className="text-xs text-red-400" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {/* Metrics */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -74,7 +144,7 @@ export default function BusinessRoadmapPage() {
             const stageSteps = steps.filter(
               (step) => step.stageId === stage.id
             );
-            const completedIds = new Set(progress.completedStepIds);
+            const completedIds = new Set(completedStepIds);
 
             return (
               <SectionCard
@@ -90,15 +160,26 @@ export default function BusinessRoadmapPage() {
                         key={step.id}
                         className="flex items-start gap-3 border-slate-700/60 bg-slate-950/60 px-3 py-3"
                       >
-                        <div className="mt-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleStep(step.id)}
+                          disabled={savingStepId === step.id}
+                          aria-pressed={done}
+                          aria-label={
+                            done
+                              ? `Mark "${step.title}" as not complete`
+                              : `Mark "${step.title}" as complete`
+                          }
+                          className="mt-1 disabled:opacity-50"
+                        >
                           <div
-                            className={`h-3 w-3 rounded-full border ${
+                            className={`h-3 w-3 rounded-full border transition-colors ${
                               done
                                 ? "border-emerald-400 bg-emerald-500"
-                                : "border-slate-500 bg-slate-800"
+                                : "border-slate-500 bg-slate-800 hover:border-emerald-400/60"
                             }`}
                           />
-                        </div>
+                        </button>
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-xs md:text-sm font-medium text-slate-50">

@@ -1,6 +1,8 @@
 // app/dashboard/growth-coach/page.tsx
 "use client";
 
+import * as React from "react";
+
 import {
   getDefaultRoadmap,
   computeOverallProgress,
@@ -16,7 +18,33 @@ import {
 } from "@/components/dashboard/SharedDashboard";
 
 export default function GrowthCoachPage() {
-  const { stages, steps, progress } = getDefaultRoadmap();
+  const { stages, steps } = getDefaultRoadmap();
+
+  const [completedStepIds, setCompletedStepIds] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadProgress() {
+      try {
+        const res = await fetch("/api/roadmap-progress");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.completedStepIds)) {
+          setCompletedStepIds(data.completedStepIds);
+        }
+      } catch {
+        // Leave progress empty; the page still renders.
+      }
+    }
+
+    loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const progress = { completedStepIds };
   const overall = computeOverallProgress(stages, steps, progress);
   const focus = getFocusStage(stages, steps, progress);
 
