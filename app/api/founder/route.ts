@@ -2,9 +2,20 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { computeFounderScore, FounderSignalInput } from "@/lib/founder/score-engine";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await req.json()) as Partial<FounderSignalInput> & {
       // optional: you can add userId here if you want
       userId?: string;
