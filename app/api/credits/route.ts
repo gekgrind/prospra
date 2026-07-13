@@ -40,28 +40,25 @@ export async function GET() {
       );
     }
 
-    const DAILY_LIMIT = 20;
-
-    const now = new Date();
-    const startOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    ).toISOString();
-
-    const { count, error } = await supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "user")
-      .eq("user_id", user.id)
-      .gte("created_at", startOfDay);
+    // Read the same counters /api/chat enforces (messages has no user_id column,
+    // so counting messages directly is not possible without a join).
+    const { data: creditRow, error } = await supabase
+      .from("profiles")
+      .select("daily_credit_limit, daily_credits_used, last_credit_reset")
+      .eq("id", user.id)
+      .maybeSingle();
 
     if (error) {
       throw error;
     }
 
-    const used = count ?? 0;
-    const limit = DAILY_LIMIT;
+    const today = new Date().toISOString().slice(0, 10);
+    const limit = creditRow?.daily_credit_limit ?? 5;
+    // Counter resets lazily on the next chat message; report 0 if it is stale.
+    const used =
+      creditRow?.last_credit_reset === today
+        ? creditRow?.daily_credits_used ?? 0
+        : 0;
 
     return NextResponse.json(
       {

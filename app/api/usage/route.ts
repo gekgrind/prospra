@@ -13,22 +13,29 @@ export async function GET() {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
-  const { count } = await supabase
-    .from("messages")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("role", "user")
-    .gte("created_at", new Date().toISOString().slice(0, 10));
+  // Read the same counters /api/chat enforces (messages has no user_id column,
+  // so counting messages directly is not possible without a join).
+  const { data: creditRow } = await supabase
+    .from("profiles")
+    .select("daily_credit_limit, daily_credits_used, last_credit_reset")
+    .eq("id", user.id)
+    .maybeSingle();
 
   const profile = await getBillingProfile(supabase, user.id);
 
   const isPremium = isPremiumProfile(profile);
-  const DAILY_LIMIT = isPremium ? Infinity : 15;
+  const today = new Date().toISOString().slice(0, 10);
+  const limit = creditRow?.daily_credit_limit ?? 5;
+  // Counter resets lazily on the next chat message; report 0 if it is stale.
+  const used =
+    creditRow?.last_credit_reset === today
+      ? creditRow?.daily_credits_used ?? 0
+      : 0;
 
   return new Response(
     JSON.stringify({
-      used: count ?? 0,
-      remaining: isPremium ? Infinity : Math.max(0, DAILY_LIMIT - (count ?? 0)),
+      used,
+      remaining: isPremium ? Infinity : Math.max(0, limit - used),
       isPremium,
     }),
     { status: 200 }
