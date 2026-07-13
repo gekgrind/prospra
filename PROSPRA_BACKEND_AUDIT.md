@@ -1,0 +1,138 @@
+# Prospra Backend Audit
+
+Generated 2026-07-13 by Claude Code. Full UI-to-backend wiring audit of the Prospra app.
+
+## Stack
+
+- **Framework**: Next.js 16 (App Router), React 19, TypeScript, Tailwind 4
+- **Database/Auth/Storage**: Supabase (shared `entrepreneuria-site` project across all Entrepreneuria apps — treat as production; migrations are written as files only, applied manually)
+- **AI**: Vercel AI SDK + OpenAI (`gpt-4o` / `gpt-4o-mini` / `gpt-4.1-mini`); Anthropic via raw fetch in one route
+- **Email**: Resend (lifecycle emails)
+- **Tests**: No test framework. One ad-hoc verify script (`scripts/verify-website-coach-api.mjs`, `node:assert`). New features verified via `npm run lint` + `npx tsc --noEmit` + manual reasoning; noted per feature in Build Log.
+
+### Conventions for new backend code (extracted from working routes)
+
+- **Auth**: `const supabase = await createClient()` from `@/lib/supabase/server`; `supabase.auth.getUser()`; return `NextResponse.json({ error: "Unauthorized" }, { status: 401 })` if no user.
+- **Validation**: manual field checks (no zod in routes, despite zod being installed); allow-list pattern for partial updates.
+- **Errors**: try/catch → `console.error("[TAG]", error)` → `{ error: string }` with 400/401/403/500.
+- **Schema**: snake_case, plural table names, `id uuid primary key default gen_random_uuid()`, `user_id uuid references auth.users(id) on delete cascade`, `created_at/updated_at timestamptz default now()`, RLS enabled with `<table>_<verb>_own` policies `using (auth.uid() = user_id)`, `check` constraints instead of enums, `(user_id, created_at desc)` index.
+- **Migrations**: new files in `supabase/migrations/` named `YYYYMMDD_description.sql`, idempotent (`if not exists` / `drop ... if exists`).
+
+### ⚠ Schema source-of-truth warning
+
+No single file in this repo reflects the live database. `supabase/migrations/` holds only 3 incremental patches; the base schema lives in untracked `scripts/*.sql` (001–005, run manually); `lib/database.types.ts` is stale (lists only 9 tables; missing `action_plans`, `feedback_items`, `conversation_outputs`, `usage_events`, `website_intelligence`, `weekly_reviews`, `email_events`, `strategic_state`, and more). Several tables referenced in code (`uploads`, `plans`, `mentor_memories`, `ai_memory`, `website_snapshots`, `resource_documents`, `website_brain_embeddings`, `mentor_sync_logs`) have **no committed CREATE TABLE at all**. New migrations here are written defensively (`if not exists`) and should be reviewed against the live schema before applying.
+
+Also noted: the 3 tables in `20260505_prospra_core_intelligence_foundation.sql` have **no RLS** — deviation from every other table; likely an oversight (they're only accessed server-side today).
+
+---
+
+## Feature Inventory
+
+### Implemented — no backend work needed
+
+| Feature | UI | Backend |
+|---|---|---|
+| Mentor chat (all 6 modes) | `app/(app)/mentor/page.tsx` | `/api/chat` — 980-line real route: context building, credit limits, streaming, mode prompts |
+| Insights & Action Plan generation | mentor page | `/api/mentor/conversation-outputs` — real (`generateObject` + `conversation_outputs`) |
+| Action plan task tracking | mentor page + `/dashboard/action-plans` | `/api/action-plans` + `/sync` + `/[planId]/tasks/[taskId]` — real |
+| Board Review (premium) | mentor page | `/api/directorium/board-review` — real, premium-gated |
+| Journal CRUD + AI recaps | `app/(app)/journal/page.tsx` | direct Supabase + `/api/journal-ai` — real |
+| Onboarding + autosave | `app/(app)/onboarding` | `/api/onboarding`, `/api/onboarding-progress` — real |
+| Settings/profile edit | `dashboard/settings/page.tsx` | direct Supabase writes — works (bypasses orphaned `/api/profile`) |
+| Feedback submit + admin triage | `app/(app)/feedback`, `dashboard/feedback` | `/api/feedback` (+ `[id]/status`) — real, admin-gated |
+| Main dashboard (founder score, health, momentum) | `dashboard/page.tsx` + `DashboardClient` | server-computed from profile/goals/usage — real |
+| Prompt Lab | `dashboard/prompt-lab` | `/api/generate-prompt` — real (OpenAI + Anthropic fallback) |
+| Web Intelligence analyze | `dashboard/website-insights`, `dashboard/web-intelligence` | `/api/web-intelligence/analyze` — real fetch+signal-extraction+heuristic scoring, persisted to `website_intelligence` |
+| Site Strategist root analyze | `site-strategist/page.tsx` | `/api/site-strategist/analyze` — real HTML fetch + parser |
+| SEO & UX Analyzer | `site-strategist/seo-ux` | `/api/site-strategist/seo-ux` — real crawler + Google PageSpeed API |
+| Copy Architect | `site-strategist/copy-architect` | `/api/site-strategist/copy-architect` — real OpenAI |
+| Ad Generator | `dashboard/ad-generator` | `/api/website/ad-campaign` — real OpenAI + website-brain context |
+| Internal admin dashboard | `dashboard/internal` | `/api/internal/admin/metrics` — real, admin-gated |
+| Weekly review (internal) | `dashboard/internal/weekly-review` | `/api/weekly-review` — real |
+| Website Coach hub page | `dashboard/website-coach` | reads `profiles.website_data`; links into mentor modes — real |
+| Rescan website | website-coach flow | `/api/website/rescan` → `website-analyzer` edge function — real |
+| Lifecycle emails | n/a (background) | `/api/lifecycle/*` + Resend — real |
+| Tools Library / filtering | `dashboard/tools-library` | static curated catalog (`lib/tools-library`) — static by design, not broken |
+
+### Build list — UI-only / Partial (ordered: dependencies first, then smallest first)
+
+#### 1. Fix `/api/credits` + `/api/usage` broken query — **Partial-Broken, S**
+- UI: `components/UsageBar.tsx`, `components/PremiumFeaturePanel.tsx`, `components/UpgradeBanner.tsx`, mentor premium gating
+- Bug: both routes query `messages.user_id` — column doesn't exist (`messages` has only `id, conversation_id, role, content, created_at`). Query throws; routes silently return hardcoded `{used:0, limit:20}` → usage displays are always wrong.
+- Fix: count via join through `conversations` (user's conversation ids), or use `profiles.daily_credits_used` which `/api/chat` already maintains.
+
+#### 2. Auth hardening: `/api/founder`, `/api/execution-systems` — **Partial-Broken, S**
+- Both routes accept unauthenticated POSTs (no `getUser()` at all). Add the standard auth check.
+
+#### 3. Chat memory extraction stub — **Partial-Broken, S**
+- `extractMemories()` in `app/api/chat/route.ts` always returns `{memories: []}` — memory extraction is dead code despite being wired. Implement a real LLM extraction pass (fire-and-forget, per existing pattern) writing to `ai_memory`.
+
+#### 4. Web Intelligence page doesn't load saved snapshot — **Partial, S**
+- `dashboard/web-intelligence/page.tsx` initializes `EMPTY_WEBSITE_INTELLIGENCE_SNAPSHOT` while `dashboard/website-insights` server-loads the latest. Load persisted snapshot the same way.
+
+#### 5. Business Roadmap persistence — **UI-only, M** (dependency for #6)
+- UI: `dashboard/business-roadmap/page.tsx`, `dashboard/growth-coach/page.tsx`
+- Reality: `getDefaultRoadmap()` in `lib/roadmap.ts` returns hardcoded stages/steps **and hardcoded completed steps** (`DEFAULT_COMPLETED_STEP_IDS`). No table, no endpoint, no way to check off a step.
+- Build: `roadmap_progress` table (user_id + completed_step_ids), GET/PATCH `/api/roadmap-progress`, wire both pages; make steps toggleable.
+
+#### 6. Growth Coach on real progress — **UI-only, S** (after #5)
+- Same hardcoded roadmap source; consumes #5's data once wired.
+
+#### 7. Sessions page — **UI-only, M**
+- UI: `dashboard/sessions/page.tsx` — pure placeholder card ("No sessions available yet").
+- Data already exists: `conversations` + `conversation_outputs` + `messages`. Build a server-loaded timeline (conversation list, message counts, summaries).
+
+#### 8. Insights page — **UI-only, M**
+- UI: `dashboard/insights/page.tsx` — pure placeholder card.
+- Data exists: `founder_score_signals`, `shared_intelligence_insights`, `conversation_outputs`, `action_plans`, `website_intelligence`. Build server-loaded insights view + supporting queries.
+
+#### 9. Resources page — **UI-only, M**
+- UI: `dashboard/resources/page.tsx` — pure placeholder card.
+- Backend exists but unused: `resource_documents` table populated by `sync_resources` edge function (SBA/SCORE/YC/IRS summaries + embeddings). Build GET `/api/resources` + list UI.
+
+#### 10. CTA Analyzer backend — **UI-only, M**
+- UI: `site-strategist/cta-analyzer/page.tsx` calls `runMockCtaAnalysis()` **client-side** from `lib/web-intelligence/cta-analyzer.ts` — no API route exists at all (only site-strategist tool with zero backend).
+- Build: `POST /api/site-strategist/cta-analyzer` following the exact sibling pattern (auth + validation + analyzer), with real page-fetch signals; swap client to call the API.
+
+#### 11. Website Coach AI engine — **Partial, M**
+- `lib/web-intelligence/website-coach.ts` `analyzeWebsiteCoach()` has explicit TODO: returns template/heuristic fallback (`calculateMockScore` = string-length math). Route/auth/validation real.
+- Build: fetch the actual page + OpenAI analysis (mirroring copy-architect), keep fallback for AI failure.
+
+#### 12. Funnel Mapping AI engine — **Partial, M**
+- Same shape: `analyzeFunnelMapping()` TODO → heuristic fallback on input string lengths. Route real.
+- Build: OpenAI-backed diagnosis with fallback retained.
+
+#### 13. Keyword Clusters real generation — **Partial, S/M**
+- `clusterSeoKeywords()` generates clusters by string-template modifiers ("what is X", "best X"...). Route real.
+- Build: OpenAI-backed clustering with template fallback.
+
+#### 14. UX Scanner real backend — **Partial-Broken, M**
+- `/api/website/ux-scan` returns a **hardcoded mock object** (same scores for every URL, explicit TODO). No auth check either.
+- Build: auth + reuse the real web-intelligence pipeline (`analyzeWebsite` signals/scores) mapped into the page's `UxScanResult` shape.
+
+#### 15. FounderFuel — **UI-only, M**
+- UI: `tools/founderfuel` — template picker + local string interpolation. Three gaps: (a) "Use this in Mentor" button hardcoded `disabled`; (b) "Saved Prompts" sidebar hardcoded placeholder; (c) "Recent Generations" hardcoded placeholder.
+- Build: `founderfuel_prompts` table + CRUD endpoint (save/list, recent generations), wire sidebar, enable "Use in Mentor" (deep-link to `/mentor?prompt=`).
+
+#### 16. Documents — **Partial-Broken, M/L**
+- `documents/page.tsx` reads `documents` table but **nothing ever writes to it** (permanently empty; empty-state says "upload through mentor chat" — no upload control exists anywhere). `/api/upload-file` is fully built but has zero callers. `/api/analyze-file` exists but its "vision" analysis just pastes the file URL into a text prompt.
+- Build: upload UI on documents page → `/api/upload-file` → insert `documents` row; delete endpoint; fix analyze-file to note limitations.
+
+#### 17. Upgrade / Stripe checkout — **Partial-Broken, L**
+- `app/(app)/upgrade/page.tsx` form posts to `/api/upgrade` — **route does not exist**; submit navigates to a 404. No Stripe key in env (`profiles.stripe_customer_id` columns exist from migration).
+- Build: `/api/upgrade` route stubbed behind `STRIPE_SECRET_KEY` config flag — full checkout-session flow coded but returns a clear "billing not configured" response until key exists. **Blocked on Stripe credentials.**
+
+### Dead/orphaned code (flagged, not touched — see guardrails)
+
+- `/api/mentor` — real logic, zero live callers, payload mismatch with its only historical caller (`components/ChatContainer.tsx`, itself unused).
+- `/api/profile` (PATCH) + `/api/profile/get` — real, zero callers, response-shape bug (`SHARED_PROFILE_SELECT` mismatch).
+- `/api/ad-campaign/generate` — literal empty skeleton (`// ... rest of your code`); the real route is `/api/website/ad-campaign`.
+- `components/ChatContainer.tsx`, `components/OnboardingForm.tsx`, `components/JournalPageComponent.tsx` (queries nonexistent `daily_journal` table) — legacy, unused.
+- Settings notification toggles (`weeklyDigest`, `productUpdates`, `investorUpdates`) persist to auth metadata but nothing consumes them — needs a product decision (digest email job), not built.
+- `scripts/README.md` contains an unresolved git merge-conflict marker.
+
+---
+
+## Build Log
+
+(appended per feature as built)
