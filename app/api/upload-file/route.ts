@@ -59,9 +59,32 @@ export async function POST(req: Request) {
       data: { publicUrl },
     } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
 
+    // Record the upload so it appears on the Documents page.
+    const { data: document, error: documentError } = await supabase
+      .from("documents")
+      .insert({
+        user_id: user.id,
+        title: blob.name || fileName,
+        file_type: blob.type || fileExt,
+        file_url: publicUrl,
+        file_size: blob.size,
+      })
+      .select("*")
+      .single();
+
+    if (documentError) {
+      // Clean up the orphaned storage object so retries don't accumulate files.
+      await supabase.storage.from(BUCKET).remove([data.path]);
+      console.error("Document insert error:", documentError);
+      return new NextResponse("Upload failed: could not record document", {
+        status: 500,
+      });
+    }
+
     return NextResponse.json({
       path: data.path,
       url: publicUrl,
+      document,
     });
   } catch (err) {
     console.error("Upload route error:", err);

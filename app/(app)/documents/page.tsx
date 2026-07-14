@@ -3,6 +3,12 @@ import { buildSharedLoginHref } from "@/lib/auth/redirects";
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from 'lucide-react';
+import {
+  DocumentDeleteButton,
+  DocumentUploadButton,
+} from "@/components/documents/DocumentActions";
+
+export const dynamic = "force-dynamic";
 
 export default async function DocumentsPage() {
   const supabase = await createClient();
@@ -22,11 +28,14 @@ export default async function DocumentsPage() {
 
   return (
     <div className="space-y-8 max-w-6xl">
-      <div>
-        <h1 className="text-4xl font-bold text-white mb-2">Documents</h1>
-        <p className="text-xl text-slate-400">
-          Manage your business documents and files
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">Documents</h1>
+          <p className="text-xl text-slate-400">
+            Manage your business documents and files
+          </p>
+        </div>
+        <DocumentUploadButton />
       </div>
 
       {!documents || documents.length === 0 ? (
@@ -39,7 +48,7 @@ export default async function DocumentsPage() {
               No documents yet
             </h3>
             <p className="text-slate-400 text-center">
-              Upload documents through the AI Mentor chat to get started
+              Upload your first document to get started
             </p>
           </CardContent>
         </Card>
@@ -54,12 +63,20 @@ export default async function DocumentsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-white text-base truncate">
-                      {doc.title}
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {doc.title}
+                      </a>
                     </CardTitle>
                     <CardDescription className="text-slate-400 text-xs">
                       {new Date(doc.created_at).toLocaleDateString()}
                     </CardDescription>
                   </div>
+                  <DocumentDeleteButton documentId={doc.id} />
                 </div>
               </CardHeader>
               <CardContent>
