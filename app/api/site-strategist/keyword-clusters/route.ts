@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import {
-  clusterSeoKeywords,
+  generateKeywordClusters,
   type KeywordClusteringError,
   type KeywordClusteringResult,
 } from "@/lib/web-intelligence/seo-keyword-clustering";
@@ -35,7 +35,7 @@ async function handleRequest(body: unknown): Promise<KeywordClusterApiResponse> 
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return { status: 401, body: { error: "Not authenticated." } };
 
-    const result = clusterSeoKeywords(seedKeyword);
+    const result = await generateKeywordClusters(seedKeyword);
     return { status: 200, body: result };
   } catch (error) {
     console.error("Keyword clustering error:", error);
