@@ -20,7 +20,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   type CtaAnalyzerResult,
   type CtaPageGoal,
-  runMockCtaAnalysis,
 } from "@/lib/web-intelligence/cta-analyzer";
 
 const pageGoalOptions: Array<{ value: CtaPageGoal; label: string }> = [
@@ -61,18 +60,34 @@ export default function CtaAnalyzerPage() {
     setIsAnalyzing(true);
 
     try {
-      await new Promise((resolve) => window.setTimeout(resolve, 550));
-      const analysis = await runMockCtaAnalysis({
-        url,
-        currentCtaText,
-        pageGoal,
-        targetAudience,
+      const response = await fetch("/api/site-strategist/cta-analyzer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          currentCtaText,
+          pageGoal,
+          targetAudience,
+        }),
       });
-      setResult(analysis);
-    } catch {
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.error === "string"
+            ? data.error
+            : "CTA Analyzer could not generate recommendations right now."
+        );
+      }
+
+      setResult(data as CtaAnalyzerResult);
+    } catch (err) {
       setResult(null);
       setError(
-        "CTA Analyzer could not generate recommendations right now. Please try again."
+        err instanceof Error && err.message
+          ? err.message
+          : "CTA Analyzer could not generate recommendations right now. Please try again."
       );
     } finally {
       setIsAnalyzing(false);
