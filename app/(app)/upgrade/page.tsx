@@ -7,10 +7,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Sparkles, Crown, Check } from "lucide-react";
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { getAnalyticsAnonymousId, trackClientEvent } from "@/lib/analytics/client";
 
+const billingMessages: Record<string, { tone: "info" | "success" | "error"; text: string }> = {
+  unavailable: {
+    tone: "info",
+    text: "Online checkout isn't available quite yet. Contact us and we'll get you upgraded directly.",
+  },
+  success: {
+    tone: "success",
+    text: "You're upgraded! Premium features unlock within a minute.",
+  },
+  cancelled: {
+    tone: "info",
+    text: "Checkout was cancelled. You can upgrade any time.",
+  },
+  error: {
+    tone: "error",
+    text: "Something went wrong starting checkout. Please try again.",
+  },
+  signin: {
+    tone: "error",
+    text: "Please sign in again before upgrading.",
+  },
+};
+
 export default function UpgradePage() {
+  const searchParams = useSearchParams();
+  const billingStatus = searchParams.get("billing");
+  const billingMessage = billingStatus ? billingMessages[billingStatus] : null;
+
   useEffect(() => {
     trackClientEvent(ANALYTICS_EVENTS.UPGRADE_CTA_VIEWED, {
       anonymous_id: getAnalyticsAnonymousId(),
@@ -20,6 +48,21 @@ export default function UpgradePage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-10">
+      {billingMessage ? (
+        <p
+          role="status"
+          className={`rounded-xl border px-4 py-3 text-center text-sm ${
+            billingMessage.tone === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : billingMessage.tone === "error"
+              ? "border-red-500/40 bg-red-500/10 text-red-300"
+              : "border-brandBlue/40 bg-brandBlue/10 text-brandBlueLight"
+          }`}
+        >
+          {billingMessage.text}
+        </p>
+      ) : null}
+
       {/* HEADER */}
       <div className="text-center space-y-4">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-brandOrange flex items-center justify-center shadow-lg">
