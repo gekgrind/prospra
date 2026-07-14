@@ -150,11 +150,154 @@ export function validateFunnelMappingInput(
   };
 }
 
+const AI_GENERATION_TIMEOUT_MS = 15000;
+
+async function fetchPageTextSnippet(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "user-agent": "ProspraSiteStrategistBot/1.0",
+        accept: "text/html,application/xhtml+xml",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().includes("text/html")) {
+      return "";
+    }
+
+    const html = await response.text();
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<\/?[^>]+(>|$)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 6000);
+  } catch {
+    return "";
+  }
+}
+
+function buildFunnelMappingPrompt(
+  input: FunnelMappingInput,
+  pageText: string
+): string {
+  return `You are Prospra's Funnel Mapping engine, a funnel strategist for founder-led businesses.
+
+Diagnose this funnel:
+- Website URL: ${input.websiteUrl}
+- Offer: ${input.offer}
+- Target audience: ${input.audience}
+- Primary conversion goal: ${input.conversionGoal}
+- Current traffic sources: ${input.trafficSources.join(", ")}
+- Landing page text (may be partial or empty if the page could not be fetched):
+${pageText || "Not available - base the diagnosis on the offer, audience, goal, and traffic sources."}
+
+Return strict JSON only. Do not include markdown, commentary, or code fences.
+
+Rules:
+- healthScore is an integer from 0 to 100. Score strictly.
+- stages must contain exactly 4 entries named "Awareness", "Consideration", "Conversion", "Retention" in that order.
+- Each stage has strength (integer 0-100), status ("strong" if strength >= 70, "watch" if 45-69, "weak" if below 45), and a 1-2 sentence insight specific to this funnel.
+- weakestStage is the name of the stage with the lowest strength.
+- Return exactly 3 missingAssets, 3 frictionPoints, 4 improvements, and 3 nextActions - all concrete and specific to this business.
+- Use founder-aware, practical language. Avoid generic marketing filler.`;
+}
+
+async function analyzeFunnelMappingWithAi(
+  input: FunnelMappingInput
+): Promise<FunnelMappingResult | null> {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+
+  try {
+    const pageText = await fetchPageTextSnippet(input.websiteUrl);
+
+    const [{ generateObject }, { openai }, { z }] = await Promise.all([
+      import("ai"),
+      import("@ai-sdk/openai"),
+      import("zod"),
+    ]);
+
+    const funnelSchema = z.object({
+      healthScore: z.number().int().min(0).max(100),
+      weakestStage: z.string().min(1),
+      missingAssets: z.array(z.string().min(1)).min(3).max(3),
+      frictionPoints: z.array(z.string().min(1)).min(3).max(3),
+      improvements: z.array(z.string().min(1)).min(4).max(4),
+      nextActions: z.array(z.string().min(1)).min(3).max(3),
+      stages: z
+        .array(
+          z.object({
+            name: z.string().min(1),
+            strength: z.number().int().min(0).max(100),
+            status: z.enum(["strong", "watch", "weak"]),
+            insight: z.string().min(1),
+          })
+        )
+        .min(4)
+        .max(4),
+    });
+
+    const generateStructuredObject = generateObject as (options: {
+      model: unknown;
+      schema: unknown;
+      prompt: string;
+    }) => Promise<{ object: FunnelMappingResult }>;
+
+    const { object } = await withTimeout(
+      generateStructuredObject({
+        model: openai("gpt-4o-mini"),
+        schema: funnelSchema,
+        prompt: buildFunnelMappingPrompt(input, pageText),
+      }),
+      AI_GENERATION_TIMEOUT_MS
+    );
+
+    return object;
+  } catch (error) {
+    console.error("Funnel Mapping AI generation failed; using fallback.", error);
+    return null;
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Funnel Mapping AI generation timed out.")),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export async function analyzeFunnelMapping(
   input: FunnelMappingInput
 ): Promise<FunnelMappingResult> {
-  // TODO: Add website crawling once Site Strategist shares a reusable page signal contract.
-  // TODO: Replace fallback scoring with AI-assisted funnel diagnosis when model prompts are finalized.
+  const aiResult = await analyzeFunnelMappingWithAi(input);
+
+  if (aiResult) {
+    return aiResult;
+  }
+
   return analyzeFunnelMappingFallback(input);
 }
 
