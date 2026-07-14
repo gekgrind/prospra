@@ -108,10 +108,154 @@ export async function analyzeWebsiteCoachFallback(
   };
 }
 
+const AI_GENERATION_TIMEOUT_MS = 15000;
+
+async function fetchPageTextSnippet(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "user-agent": "ProspraSiteStrategistBot/1.0",
+        accept: "text/html,application/xhtml+xml",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().includes("text/html")) {
+      return "";
+    }
+
+    const html = await response.text();
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<\/?[^>]+(>|$)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 6000);
+  } catch {
+    return "";
+  }
+}
+
+function buildWebsiteCoachPrompt(
+  input: WebsiteCoachInput,
+  normalizedUrl: string,
+  pageText: string
+): string {
+  return `You are Prospra's Website Coach, a conversion and messaging strategist for founder-led websites.
+
+Analyze this website for the founder:
+- Website URL: ${normalizedUrl}
+- Business type: ${input.businessType}
+- Target audience: ${input.targetAudience}
+- Main goal: ${goalLabels[input.mainGoal]}
+- Homepage text (may be partial or empty if the page could not be fetched):
+${pageText || "Not available - base the analysis on the business type, audience, and goal."}
+
+Return strict JSON only. Do not include markdown, commentary, or code fences.
+
+Rules:
+- overallScore is an integer from 0 to 100. Score strictly based on how well the page serves the stated goal for the stated audience.
+- Return exactly 5 topRecommendations, each one concrete and specific to this site.
+- messagingClarityFeedback and trustCredibilityFeedback are 2-3 sentences each.
+- Return exactly 3 conversionOpportunities and exactly 4 suggestedNextActions.
+- Use founder-aware, practical language. Avoid generic marketing filler.`;
+}
+
+async function analyzeWebsiteCoachWithAi(
+  input: WebsiteCoachInput,
+  normalizedUrl: string
+): Promise<WebsiteCoachResult | null> {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+
+  try {
+    const pageText = await fetchPageTextSnippet(normalizedUrl);
+
+    const [{ generateObject }, { openai }, { z }] = await Promise.all([
+      import("ai"),
+      import("@ai-sdk/openai"),
+      import("zod"),
+    ]);
+
+    const websiteCoachSchema = z.object({
+      overallScore: z.number().int().min(0).max(100),
+      topRecommendations: z.array(z.string().min(1)).min(5).max(5),
+      messagingClarityFeedback: z.string().min(1),
+      trustCredibilityFeedback: z.string().min(1),
+      conversionOpportunities: z.array(z.string().min(1)).min(3).max(3),
+      suggestedNextActions: z.array(z.string().min(1)).min(4).max(4),
+    });
+
+    type WebsiteCoachAiOutput = Omit<WebsiteCoachResult, "normalizedUrl">;
+
+    const generateStructuredObject = generateObject as (options: {
+      model: unknown;
+      schema: unknown;
+      prompt: string;
+    }) => Promise<{ object: WebsiteCoachAiOutput }>;
+
+    const { object } = await withTimeout(
+      generateStructuredObject({
+        model: openai("gpt-4o-mini"),
+        schema: websiteCoachSchema,
+        prompt: buildWebsiteCoachPrompt(input, normalizedUrl, pageText),
+      }),
+      AI_GENERATION_TIMEOUT_MS
+    );
+
+    return {
+      normalizedUrl,
+      ...object,
+      overallScore: Math.max(0, Math.min(100, Math.round(object.overallScore))),
+    };
+  } catch (error) {
+    console.error("Website Coach AI generation failed; using fallback.", error);
+    return null;
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Website Coach AI generation timed out.")),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export async function analyzeWebsiteCoach(
   input: WebsiteCoachInput
 ): Promise<WebsiteCoachResult> {
-  // TODO: Replace this fallback with AI-backed website crawling once the Site
-  // Strategist backend has a durable crawl, extraction, and scoring pipeline.
+  const normalizedUrl = normalizeWebsiteCoachUrl(input.websiteUrl);
+
+  if (!input.businessType.trim() || !input.targetAudience.trim()) {
+    throw new Error("Business type and target audience are required.");
+  }
+
+  const aiResult = await analyzeWebsiteCoachWithAi(input, normalizedUrl);
+
+  if (aiResult) {
+    return aiResult;
+  }
+
   return analyzeWebsiteCoachFallback(input);
 }
