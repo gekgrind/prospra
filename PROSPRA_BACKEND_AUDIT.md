@@ -135,4 +135,96 @@ Also noted: the 3 tables in `20260505_prospra_core_intelligence_foundation.sql` 
 
 ## Build Log
 
-(appended per feature as built)
+### 1. `/api/credits` + `/api/usage` fix — done (commit `fa2c00e0`)
+- Files: `app/api/credits/route.ts`, `app/api/usage/route.ts`
+- Replaced the broken `messages.user_id` count query with reads of `profiles.daily_credits_used` / `daily_credit_limit` / `last_credit_reset` — the exact counters `/api/chat` enforces.
+- Decisions: limit fallback is now `daily_credit_limit ?? 5` (matching chat enforcement) instead of the previous hardcoded 20/15, so displayed numbers agree with what actually gates the user. Stale counters (last reset ≠ today) report 0; the reset itself still happens lazily in `/api/chat` (a GET should not write). Guest/error fallbacks left untouched.
+- Verified: `tsc --noEmit` and eslint clean on both files. No test framework in repo — manual verification only.
+
+### 2. Auth hardening — done (commit `4649a578`)
+- Files: `app/api/founder/route.ts`, `app/api/execution-systems/route.ts`
+- Added the standard `createClient` + `getUser()` → 401 check. Both remain stateless compute endpoints otherwise. Verified: tsc + eslint clean.
+
+### 3. Chat memory extraction — done (commit `f4b48c9e`)
+- Files: `app/api/chat/route.ts`
+- Implemented the `extractMemories()` stub: gpt-4o-mini pass extracting 0–3 durable founder/business facts per exchange, persisted through the pre-existing `saveMemories()` → `mentor_memories` path (which `getMemories()` already reads back into context). Always uses gpt-4o-mini regardless of plan (extraction is background bookkeeping, not a premium surface). Errors degrade to `[]`, never blocking the chat stream.
+- Assumption flagged: memory strings capped at 500 chars, max 3 per exchange — no product spec existed for this.
+
+### 4. Web Intelligence snapshot hydration — done (commit `ef5413f6`)
+- Files: `app/(app)/dashboard/web-intelligence/page.tsx` (now a server component), new `WebIntelligencePageClient.tsx` (the previous JSX, unchanged, accepting `initialSnapshot`).
+- Page now hydrates from the latest `website_intelligence` row via the existing `getLatestWebsiteIntelligence()` helper, matching `/dashboard/website-insights`. No visual changes.
+
+### 5+6. Roadmap progress persistence — done (commit `8acd8926`)
+- Files: `supabase/migrations/20260713_roadmap_progress.sql`, `app/api/roadmap-progress/route.ts`, `lib/roadmap.ts`, business-roadmap + growth-coach pages.
+- New `roadmap_progress` table (PK = `user_id`, `completed_step_ids jsonb`, RLS `_own` policies, updated_at trigger — follows `strategic_state` one-row-per-user pattern). GET/PATCH endpoint validates step ids against the static roadmap definition. Removed the fake `DEFAULT_COMPLETED_STEP_IDS`. Roadmap step markers are now toggle buttons with optimistic updates + rollback; Growth Coach reads the same real progress.
+- **Migration not applied** — file only, per instruction. Until applied, GET/PATCH return 500 and the pages degrade to 0% progress (no crash).
+- Assumption flagged: roadmap stages/steps stay static app content in `lib/roadmap.ts`; only per-user completion is persisted.
+
+### 7. Sessions page — done (commit `d4086748`)
+- Files: `app/(app)/dashboard/sessions/page.tsx`
+- Server-loads conversations (latest 50) + message counts + `conversation_outputs` summaries/priorities; each card deep-links to `/mentor?conversation=<id>`. No new tables.
+
+### 8. Insights page — done (commit `d352b891`)
+- Files: `app/(app)/dashboard/insights/page.tsx`
+- Server-aggregates founder score (latest `founder_score_signals` → existing `computeMultiFactorFounderScore`), action-plan completion, latest website scores/issues, recent session takeaways, and cross-app `shared_intelligence_insights`. Empty state preserved when no data exists.
+
+### 9. Resources page — done (commit `c5d0b00e`)
+- Files: `app/(app)/dashboard/resources/page.tsx`, `supabase/migrations/20260713_resource_documents_read_policy.sql`
+- Lists `resource_documents` (populated by the `sync_resources` edge function, previously consumer-less). Guarded migration enables RLS + authenticated read policy on that table (created outside tracked migrations; policy state in live DB unknown — **verify before/after applying**).
+- Note: the sync itself depends on the edge function being scheduled (no scheduler found in repo — likely Supabase dashboard cron). If the table is empty in production, that's the reason.
+
+### 10. CTA Analyzer backend — done (commit `9d1ffda9`)
+- Files: `lib/web-intelligence/cta-analyzer.ts`, new `app/api/site-strategist/cta-analyzer/route.ts`, cta-analyzer page.
+- New route follows the exact sibling pattern (auth + manual validation). AI engine fetches the target page text and scores the CTA via gpt-4o-mini `generateObject` (dynamic-import + 15s timeout pattern copied from Copy Architect); the previous client-side heuristic is retained as `runFallbackCtaAnalysis` for no-key/failure. Page now calls the API.
+
+### 11. Website Coach AI engine — done (commit on `lib/web-intelligence/website-coach.ts`)
+- Real page fetch + gpt-4o-mini analysis replacing the string-length "mock score"; heuristic fallback retained. `npm run verify:website-coach-api` still passes (the repo's only automated test).
+
+### 12. Funnel Mapping AI engine — done
+- Files: `lib/web-intelligence/funnel-mapping.ts`. Same pattern: landing-page fetch + gpt-4o-mini funnel diagnosis (4 fixed stages, health score, assets/friction/actions), heuristic fallback retained.
+
+### 13. Keyword clusters — done
+- Files: `lib/web-intelligence/seo-keyword-clustering.ts`, keyword-clusters route. New async `generateKeywordClusters()` (AI with template fallback). Note: this endpoint still has **no UI caller** — it was orphaned before and remains available for a future UI.
+
+### 14. UX Scanner — done
+- Files: `app/api/website/ux-scan/route.ts` (rewritten). Now auth-gated and backed by the real `analyzeWebsite` pipeline; sections/issues derived from actual page signals; snapshot persisted to `website_intelligence`.
+- Assumption flagged: `mobileScore` is approximated from structural signals (heading hierarchy, nav, alt coverage blended with UX score) — there is no real mobile crawl. Flagged for a product decision if a true mobile audit (e.g. PageSpeed mobile strategy) is wanted.
+
+### 15. FounderFuel — done (commit `592c40c1`)
+- Files: `supabase/migrations/20260713_founderfuel_prompts.sql`, new `app/api/founderfuel/prompts/route.ts` (GET/POST/PATCH), sidebar/output/page components.
+- Generations are recorded on generate; new "Save Prompt" button pins to Saved Prompts; sidebar lists real saved/recent prompts (click to reload); "Use this in Mentor" (previously hardcoded disabled) deep-links to `/mentor?prompt=` which the mentor page already consumes. **Migration not applied** — until then the endpoints return 500 and the page degrades gracefully (prompt generation itself is unaffected).
+- Decision: prompt generation stays client-side string templating (its designed behavior); persistence + handoff were the missing backend, not LLM generation. If FounderFuel should be AI-generated, that's a product call — flag for review.
+
+### 16. Documents — done (commit `1e11442c`)
+- Files: `app/api/upload-file/route.ts` (now records a `documents` row, with storage cleanup on insert failure), new `app/api/documents/[id]/route.ts` (DELETE: row + best-effort storage object), `components/documents/DocumentActions.tsx`, documents page (upload button, per-card delete, title links to file).
+- Not done: `/api/analyze-file`'s fake "vision" analysis (interpolates the file URL as text) — left untouched since it has zero callers; needs a product decision on whether document AI analysis is a real feature.
+- Assumption flagged: 20 MB client-side size cap and a common-document accept list on the file input.
+
+### 17. Upgrade / Stripe — done, **BLOCKED on credentials** (commit `83f24b2e`)
+- Files: new `app/api/upgrade/route.ts`, new `app/api/stripe/webhook/route.ts`, upgrade page (billing status notices), `.env.example`.
+- Checkout: Stripe REST API via raw fetch (no SDK — follows the repo's raw-fetch precedent for Anthropic). Creates a subscription checkout session with `client_reference_id`/metadata `user_id`, reuses `profiles.stripe_customer_id` when present, 303-redirects to Stripe. Webhook: manual `Stripe-Signature` HMAC verification with 5-minute replay window; handles `checkout.session.completed` and `customer.subscription.updated/deleted`, updating `profiles` billing fields via the service-role client (background-job pattern).
+- **Config flag**: without `STRIPE_SECRET_KEY` + `STRIPE_PREMIUM_PRICE_ID` the form now redirects back with a clear "billing unavailable" notice instead of the previous 404. Webhook returns 503 until `STRIPE_WEBHOOK_SECRET` is set.
+- Needs from you: Stripe account keys, a Premium price ($19/mo hardcoded on the page — confirm), webhook endpoint registration, and an end-to-end test. Also updated `.env.example` with all env vars the codebase actually uses but never documented (OpenAI, Anthropic, Resend, PageSpeed, cron secret, admin emails, Stripe).
+
+---
+
+## Final Summary
+
+**Total features audited**: 37 distinct features/tools (20 already implemented, 17 needing backend work).
+
+**Completed**: 16 of 17 build-list items are fully coded, typechecked, linted, and committed individually (commits `fa2c00e0` → `83f24b2e`). The full production build (`next build`) passes.
+
+**Blocked**: 1 — Stripe checkout/webhook is code-complete but **blocked on Stripe credentials** (`STRIPE_SECRET_KEY`, `STRIPE_PREMIUM_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`). It degrades gracefully until configured.
+
+**Not yet live until you act**:
+1. **Apply 3 new migrations** (`supabase db push` or SQL editor): `20260713_roadmap_progress.sql`, `20260713_founderfuel_prompts.sql`, `20260713_resource_documents_read_policy.sql`. Per your instruction, nothing was executed against the shared `entrepreneuria-site` project. Until applied, roadmap progress and FounderFuel persistence return errors (pages degrade gracefully).
+2. **Stripe setup** (see item 17).
+
+**Left for your decision (prioritized)**:
+1. **Stripe credentials + price confirmation** — unblocks the only revenue feature.
+2. **RLS missing on 3 intelligence tables** (`mentor_memory_entries`, `founder_score_signals`, `shared_intelligence_insights` from the 20260505 migration) — likely an oversight; currently safe only because access is server-side.
+3. **Dead code cleanup** (not touched per guardrails): `/api/mentor`, `/api/profile`, `/api/profile/get`, `/api/ad-campaign/generate` (empty skeleton), `components/ChatContainer.tsx`, `components/OnboardingForm.tsx`, `components/JournalPageComponent.tsx` (queries a nonexistent table), plus the merge-conflict marker in `scripts/README.md`.
+4. **Settings notification toggles** persist but nothing sends digests — needs a product decision (email job) before they're honest UI.
+5. **`/api/analyze-file`** — decide whether document AI analysis is a feature; current implementation can't actually read file contents.
+6. **Mobile score in UX Scanner** is approximated — decide if a real mobile audit is wanted (PageSpeed mobile strategy is already integrated in the SEO-UX tool and could be reused).
+7. **Stale schema artifacts**: `lib/database.types.ts` should be regenerated (`supabase gen types`), and consider consolidating `scripts/*.sql` into tracked migrations — the repo currently has no reliable schema source of truth.
