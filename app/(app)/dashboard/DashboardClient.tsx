@@ -153,7 +153,7 @@ function MetricPanel({
   helper: string;
 }) {
   return (
-    <ShellCard className="p-5">
+    <InteractiveCard className="rounded-2xl border border-[#4f7ca7]/15 bg-[rgba(255,255,255,0.03)] p-5">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8fb8d8]">
           {label}
@@ -162,7 +162,7 @@ function MetricPanel({
       </div>
       <div className="text-3xl font-semibold tracking-tight text-white">{value}</div>
       <p className="mt-2 text-sm leading-6 text-[#c7d8ea]/70">{helper}</p>
-    </ShellCard>
+    </InteractiveCard>
   );
 }
 
@@ -429,13 +429,8 @@ export default function DashboardClient({
   const hasMentorSessions = recentMentorSessions.length > 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#07111f] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(79,124,167,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(79,124,167,0.16)_1px,transparent_1px)] [background-size:32px_32px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,212,255,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(79,124,167,0.16),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.82)_0%,rgba(7,17,31,0.98)_100%)]" />
-      </div>
-
-      <div className="relative mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-10">
+    <div className="relative text-white">
+      <div className="relative mx-auto max-w-7xl">
         <DashboardAlertList alerts={dashboardAlerts} />
 
         <motion.section

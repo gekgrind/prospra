@@ -4,7 +4,6 @@ import {
   Bot,
   Compass,
   Flame,
-  FolderKanban,
   Globe,
   LayoutDashboard,
 } from "lucide-react";
@@ -49,12 +48,6 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     href: "/dashboard/action-plans",
     icon: Compass,
     matchPrefixes: ["/dashboard/action-plans"],
-  },
-  {
-    label: "Toolkit",
-    href: "/dashboard/resources",
-    icon: FolderKanban,
-    matchPrefixes: ["/dashboard/resources"],
   },
   {
     label: "Command Center",

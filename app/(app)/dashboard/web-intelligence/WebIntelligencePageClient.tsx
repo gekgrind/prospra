@@ -101,7 +101,7 @@ export default function WebIntelligencePageClient({
             />
             <QuickLink
               href="/dashboard/resources"
-              label="Toolkit"
+              label="Resources"
               icon={BookOpenText}
             />
           </div>

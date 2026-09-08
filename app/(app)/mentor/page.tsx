@@ -201,6 +201,10 @@ function getConversationOutputsErrorMessage(status: number, rawError?: unknown) 
     return "Action plan generation is available with Premium. Upgrade when you're ready to turn this thread into next steps.";
   }
 
+  if (rawMessage.includes("not configured") || rawMessage.includes("missing environment variable")) {
+    return "Action plan generation isn't available yet because the AI provider isn't configured. Ask the workspace owner to add the required keys.";
+  }
+
   if (status === 422 && typeof rawError === "string" && rawError.trim()) {
     return rawError;
   }
@@ -1203,7 +1207,7 @@ function MentorPageContent() {
   }
 
   return (
-    <div className="relative mx-auto flex h-[calc(100vh-32px)] w-full max-w-7xl gap-5 md:h-[calc(100vh-48px)] md:gap-7">
+    <div className="relative mx-auto flex h-[calc(100vh-8rem)] w-full max-w-7xl gap-5 md:h-[calc(100vh-48px)] md:gap-7">
       <div className="pointer-events-none absolute -top-12 left-[28%] h-44 w-44 rounded-full bg-[#00d4ff]/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-8 bottom-8 h-36 w-36 rounded-full bg-[#2b8fcf]/10 blur-3xl" />
       <ConversationRail
@@ -1218,8 +1222,8 @@ function MentorPageContent() {
       <InteractiveGlowCard className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-[#4f7ca7]/24 bg-[linear-gradient(180deg,rgba(7,17,32,0.97)_0%,rgba(4,12,24,0.99)_100%)] shadow-[0_26px_80px_rgba(0,0,0,0.52)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/60 to-transparent" />
         <div className="shrink-0 border-b border-[#4f7ca7]/25 px-5 py-4 md:px-7 md:py-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-start gap-3.5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3.5">
               <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
                   <Button
@@ -1248,7 +1252,7 @@ function MentorPageContent() {
                 <Sparkles className="h-5 w-5 text-[#dbf1ff]" />
               </div>
 
-              <div>
+              <div className="min-w-0 flex-1">
                 <h1 className="text-base font-semibold tracking-tight text-[#f5fbff] md:text-lg">
                   Mentor
                 </h1>
@@ -1263,7 +1267,7 @@ function MentorPageContent() {
                   <select
                     value={mode}
                     onChange={(e) => setMode(e.target.value as ModeOption)}
-                    className="mt-1.5 rounded-xl border border-[#4f7ca7]/38 bg-[rgba(7,18,34,0.92)] px-3 py-1.5 text-xs text-[#d5e7f6] transition focus:border-[#72b8e4]/70 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/20"
+                    className="mt-1.5 w-full max-w-full rounded-xl border border-[#4f7ca7]/38 bg-[rgba(7,18,34,0.92)] px-3 py-1.5 text-xs text-[#d5e7f6] transition focus:border-[#72b8e4]/70 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/20 md:w-auto"
                   >
                     <option value="mentor">{MODE_LABELS.mentor}</option>
                     <option value="website-coach">
@@ -1289,7 +1293,10 @@ function MentorPageContent() {
             </div>
 
             {!isPremiumUser && (
-              <Link href="/upgrade">
+              <Link
+                href="/upgrade"
+                className="shrink-0"
+              >
                 <Button className="flex items-center gap-2 rounded-xl bg-brandOrange px-4 py-2 text-white shadow-[0_12px_30px_rgba(191,115,33,0.32)] hover:bg-brandOrangeLight">
                   <Crown className="h-4 w-4" />
                   Go Premium
@@ -1443,7 +1450,7 @@ function MentorPageContent() {
                     {actionPlan.tasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-[#4f7ca7]/24 bg-[rgba(7,18,33,0.86)] px-3.5 py-3"
+                        className="flex flex-col gap-3 rounded-xl border border-[#4f7ca7]/24 bg-[rgba(7,18,33,0.86)] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-sm text-[#e1f0ff]">{task.title}</p>
@@ -1452,7 +1459,7 @@ function MentorPageContent() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             type="button"
                             size="sm"

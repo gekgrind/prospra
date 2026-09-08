@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sparkles } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   DASHBOARD_NAV_ITEMS,
   type DashboardNavItem,
 } from "@/components/dashboard/nav-items";
+import { createClient } from "@/lib/supabase/client";
 import { getCommandCenterUrl } from "@/lib/config/ecosystem";
 
 type SidebarUser = {
@@ -45,17 +46,74 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
     [commandCenterHref]
   );
 
+  const supabase = useMemo(() => createClient(), []);
+
+  // The (app) layout persists across client-side navigations, so the
+  // server-provided `user` prop can go stale after a profile update. Re-read the
+  // latest profile (avatar / name) on mount and whenever the route changes so the
+  // sidebar stays in sync without introducing polling.
+  const [liveUser, setLiveUser] = useState<SidebarUser>({
+    email: user.email,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+    isAdmin: user.isAdmin,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshSidebarUser() {
+      try {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+
+        if (!authUser) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", authUser.id)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        setLiveUser((prev) => ({
+          ...prev,
+          fullName:
+            profile?.full_name ??
+            authUser.user_metadata?.full_name ??
+            prev.fullName,
+          avatarUrl:
+            profile?.avatar_url ??
+            authUser.user_metadata?.avatar_url ??
+            authUser.user_metadata?.picture ??
+            prev.avatarUrl,
+        }));
+      } catch {
+        // Non-fatal; keep the existing sidebar user data.
+      }
+    }
+
+    void refreshSidebarUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, supabase]);
+
   const founderName = useMemo(() => {
-    if (user.fullName?.trim()) return user.fullName.trim();
-    if (user.email?.trim()) return user.email.split("@")[0];
+    if (liveUser.fullName?.trim()) return liveUser.fullName.trim();
+    if (liveUser.email?.trim()) return liveUser.email.split("@")[0];
     return "Founder";
-  }, [user.email, user.fullName]);
+  }, [liveUser.email, liveUser.fullName]);
 
   const avatarInitial = useMemo(() => {
-    if (user.fullName?.trim()) return user.fullName.trim().charAt(0).toUpperCase();
-    if (user.email?.trim()) return user.email.trim().charAt(0).toUpperCase();
+    if (liveUser.fullName?.trim())
+      return liveUser.fullName.trim().charAt(0).toUpperCase();
+    if (liveUser.email?.trim()) return liveUser.email.trim().charAt(0).toUpperCase();
     return "F";
-  }, [user.email, user.fullName]);
+  }, [liveUser.email, liveUser.fullName]);
 
   return (
     <>
@@ -147,8 +205,17 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
                     isExpanded ? "gap-2.5 p-1.5" : "justify-center p-1.5",
                   ].join(" ")}
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brandBlue/60 bg-brandBlueLight text-sm font-bold text-brandNavy shadow-md transition-all">
-                    {avatarInitial}
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-brandBlue/60 bg-brandBlueLight text-sm font-bold text-brandNavy shadow-md transition-all">
+                    {liveUser.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={liveUser.avatarUrl}
+                        alt={founderName}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span aria-hidden="true">{avatarInitial}</span>
+                    )}
                   </div>
 
                   <div

@@ -36,6 +36,34 @@ function createClient(request: Request) {
   );
 }
 
+function missingConfigError() {
+  const missing: string[] = [];
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    missing.push("NEXT_PUBLIC_SUPABASE_URL");
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    missing.push("OPENAI_API_KEY");
+  }
+
+  if (missing.length === 0) {
+    return null;
+  }
+
+  return NextResponse.json(
+    {
+      error:
+        "Action plan generation is not configured. Missing environment variables: " +
+        missing.join(", "),
+      code: "NOT_CONFIGURED",
+    },
+    { status: 503 }
+  );
+}
+
 async function assertConversationOwnership(supabase: ReturnType<typeof createServerClient>, conversationId: string, userId: string) {
   const { data: conversation, error } = await supabase
     .from("conversations")
@@ -50,6 +78,9 @@ async function assertConversationOwnership(supabase: ReturnType<typeof createSer
 
 export async function GET(req: Request) {
   try {
+    const configError = missingConfigError();
+    if (configError) return configError;
+
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get("conversationId");
 
@@ -91,6 +122,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const configError = missingConfigError();
+    if (configError) return configError;
+
     const { conversationId } = await req.json();
 
     if (!conversationId || typeof conversationId !== "string") {
