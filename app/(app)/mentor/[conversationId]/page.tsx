@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function MentorConversationPage({
+export default async function MentorConversationPage({
   params,
 }: {
-  params: { conversationId: string };
+  params: Promise<{ conversationId: string }>;
 }) {
-  redirect(`/mentor?conversation=${params.conversationId}`);
+  const { conversationId } = await params;
+  redirect(`/mentor?conversation=${encodeURIComponent(conversationId)}`);
 }

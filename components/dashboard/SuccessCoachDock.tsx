@@ -1,92 +1,86 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useChat } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
+import {
+  describeMentorChatError,
+  extractMessageText,
+  type MentorUIMessageLike,
+} from "@/lib/mentor/chat-client";
+
+const COACH_MODE = "success-coach";
+
+const WELCOME_MESSAGE: UIMessage = {
+  id: "welcome",
+  role: "assistant",
+  parts: [
+    {
+      type: "text",
+      text: "Hey founder, I’m your AI Success Coach. What’s the #1 thing you want help with this week?",
+    },
+  ],
 };
 
+/**
+ * Dashboard Success Coach: a quick, ephemeral chat. It streams from /api/chat
+ * like the Mentor, but sends no conversationId, so nothing is written to the
+ * founder's Mentor conversation history. The coach persona and format live
+ * server-side (mode "success-coach").
+ */
 export function SuccessCoachDock() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hey founder, I’m your AI Success Coach. What’s the #1 thing you want help with this week?",
-    },
-  ]);
   const [input, setInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const submitLockRef = useRef(false);
+
+  const { messages, sendMessage, regenerate, status, error, clearError } = useChat({
+    id: "success-coach-dock",
+    messages: [WELCOME_MESSAGE],
+  });
+
+  const isSending = status === "submitted" || status === "streaming";
+  const visibleMessages = messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      id: message.id,
+      role: message.role as "user" | "assistant",
+      content: extractMessageText(message as MentorUIMessageLike),
+    }))
+    .filter((message) => message.content.trim().length > 0);
+  const lastVisible = visibleMessages[visibleMessages.length - 1];
+  const isAwaitingFirstToken =
+    status === "submitted" || (status === "streaming" && lastVisible?.role !== "assistant");
+  const errorInfo = error ? describeMentorChatError(error) : null;
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return;
     containerRef.current.scrollTop = containerRef.current.scrollHeight;
-  }, [messages, isOpen]);
+  }, [lastVisible?.content, visibleMessages.length, isOpen, error]);
 
-  async function handleSend(e?: React.FormEvent) {
+  useEffect(() => {
+    if (status !== "submitted" && status !== "streaming") submitLockRef.current = false;
+  }, [status]);
+
+  function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!input.trim() || isSending) return;
+    const text = input.trim();
+    if (!text || isSending || submitLockRef.current) return;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: input.trim(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    submitLockRef.current = true;
+    clearError();
     setInput("");
-    setIsSending(true);
+    void sendMessage({ text }, { body: { mode: COACH_MODE } });
+  }
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "success-coach",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are Prospra, an AI Success Coach for entrepreneurs. Be practical, encouraging, and focused on concrete next steps tied to their goals and founder score.",
-            },
-            ...messages,
-            userMessage,
-          ].map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Request failed");
-      }
-
-      const data = await res.json();
-
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: data.reply ?? "I’m here. Let’s break this into the next best move.",
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
-      console.error("[SUCCESS_COACH_ERROR]", err);
-
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content:
-          "Something glitched on my side. Give it another shot in a second, or refresh the page.",
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsSending(false);
-    }
+  function handleRetry() {
+    if (isSending || submitLockRef.current) return;
+    submitLockRef.current = true;
+    clearError();
+    void regenerate({ body: { mode: COACH_MODE } });
   }
 
   return (
@@ -147,7 +141,7 @@ export function SuccessCoachDock() {
                 ref={containerRef}
                 className="max-h-80 space-y-3 overflow-y-auto px-4 py-4"
               >
-                {messages.map((message) => {
+                {visibleMessages.map((message) => {
                   const isUser = message.role === "user";
 
                   return (
@@ -156,7 +150,7 @@ export function SuccessCoachDock() {
                       className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[85%] rounded-2xl border px-3.5 py-2.5 text-[0.82rem] leading-6 ${
+                        className={`max-w-[85%] whitespace-pre-wrap rounded-2xl border px-3.5 py-2.5 text-[0.82rem] leading-6 ${
                           isUser
                             ? "border-[#4f7ca7]/20 bg-[rgba(255,255,255,0.05)] text-[#eef6ff]"
                             : "border-[#00D4FF]/18 bg-[#00D4FF]/8 text-[#e8fbff]"
@@ -168,14 +162,43 @@ export function SuccessCoachDock() {
                   );
                 })}
 
-                {isSending && (
-                  <div className="flex justify-start">
+                {isAwaitingFirstToken && (
+                  <div className="flex justify-start" aria-label="Coach is thinking">
                     <div className="rounded-2xl border border-[#00D4FF]/18 bg-[#00D4FF]/8 px-3.5 py-2.5 text-[0.82rem] text-[#e8fbff]">
                       <span className="inline-flex items-center gap-1">
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D4FF]" />
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D4FF] [animation-delay:120ms]" />
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D4FF] [animation-delay:240ms]" />
                       </span>
+                    </div>
+                  </div>
+                )}
+
+                {errorInfo && !isSending && (
+                  <div className="flex justify-start" role="alert">
+                    <div className="max-w-[85%] rounded-2xl border border-[#ff8a7a]/25 bg-[#ff6b5a]/[0.06] px-3.5 py-2.5 text-[0.82rem] leading-6 text-[#ffd9d3]">
+                      <p>
+                        {errorInfo.kind === "generic"
+                          ? "Something glitched on my side. Give it another shot."
+                          : errorInfo.message}
+                      </p>
+                      {errorInfo.kind === "generic" && (
+                        <button
+                          type="button"
+                          onClick={handleRetry}
+                          className="mt-1.5 text-[0.75rem] font-semibold text-[#ffe4df] underline underline-offset-2 hover:text-white"
+                        >
+                          Try again
+                        </button>
+                      )}
+                      {errorInfo.kind === "usage_limit" && (
+                        <Link
+                          href="/upgrade"
+                          className="mt-1.5 inline-block text-[0.75rem] font-semibold text-brandYellow underline underline-offset-2"
+                        >
+                          Upgrade
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )}
@@ -190,6 +213,7 @@ export function SuccessCoachDock() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask about your next move..."
+                    aria-label="Message your Success Coach"
                     className="flex-1 bg-transparent px-3 py-1.5 text-[0.82rem] text-white outline-none placeholder:text-[#8aa6c1]"
                   />
                   <button

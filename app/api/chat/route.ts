@@ -1,10 +1,10 @@
 // /app/api/chat/route.ts
 
 import { generateText, streamText } from "ai";
+import { after } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateConversationTitle } from "./get-title";
 import { getWebsiteBrainContext } from "@/lib/website-brain/retrieve";
 import { getBillingProfile } from "@/lib/identity/profile";
 import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
@@ -12,17 +12,17 @@ import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { buildMentorContext } from "@/lib/mentor/build-mentor-context";
 import { buildMentorSystemPrompt } from "@/lib/mentor/build-mentor-system-prompt";
+import {
+  normalizeContextHint,
+  sanitizeIncomingMessages,
+} from "@/lib/mentor/chat-request";
+import { persistAssistantTurn, persistUserTurn } from "@/lib/mentor/persistence";
 
 type AppSupabaseClient = SupabaseClient;
 
 /* -------------------------------------------------------------
    TYPES
 ------------------------------------------------------------- */
-
-type UIMessage = {
-  role: "user" | "assistant" | "system";
-  content: string;
-};
 
 type FounderContext = {
   fullName?: string | null;
@@ -72,35 +72,11 @@ type UsageCheckResult = {
    UTILS
 ------------------------------------------------------------- */
 
-function normalizeRole(role: unknown): UIMessage["role"] {
-  if (role === "user" || role === "assistant" || role === "system") {
-    return role;
-  }
-
-  return "user";
-}
-
-function extractTextFromMessage(message: unknown): string {
-  if (!message || typeof message !== "object") return "";
-
-  const msg = message as {
-    content?: unknown;
-    parts?: Array<{ text?: unknown; content?: unknown }>;
-  };
-
-  if (typeof msg.content === "string") return msg.content;
-
-  if (Array.isArray(msg.parts)) {
-    return msg.parts
-      .map((part) => {
-        if (typeof part?.text === "string") return part.text;
-        if (typeof part?.content === "string") return part.content;
-        return "";
-      })
-      .join("");
-  }
-
-  return "";
+function jsonError(status: number, error: string, message: string): Response {
+  return new Response(JSON.stringify({ error, message }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function parseCookieHeader(
@@ -698,6 +674,31 @@ ${sharedInsightContext}
 ${mentorHintBlock}
 `;
 
+    case "success-coach":
+      // Dashboard Success Coach dock: a quick, ephemeral game plan in a small panel.
+      return `
+${mentorContextPrompt}
+
+You are Prospra, an AI Success Coach for entrepreneurs. Be practical, encouraging, and focused on concrete next steps tied to their goals and founder score.
+
+Format:
+- Plain text only: no headings and no bold. Short "- " bullets are fine.
+- Keep every reply under about 90 words. The founder wants a game plan within 2 to 3 messages.
+- End with one clear next step or one sharp question.
+
+Founder Context:
+${founderContext}
+
+Memory Context:
+${memoryContext}
+
+Action Plan Context:
+${actionPlanContext}
+${mentorHintBlock}
+Website Context:
+${websiteContext}
+`;
+
     default:
       return `
 ${mentorContextPrompt}
@@ -756,7 +757,7 @@ export async function POST(req: Request) {
     try {
       body = await req.json();
     } catch {
-      return new Response("Invalid JSON", { status: 400 });
+      return jsonError(400, "INVALID_REQUEST", "Invalid JSON body.");
     }
 
     const parsedBody = body as {
@@ -764,43 +765,66 @@ export async function POST(req: Request) {
       conversationId?: string | null;
       mode?: string;
       mentorContextHint?: unknown;
+      trigger?: unknown;
     };
 
-    const raw = parsedBody.messages;
-    const incoming = parsedBody.conversationId ?? null;
-    const mode = typeof parsedBody.mode === "string" ? parsedBody.mode : "mentor";
-    const mentorContextHint =
-      typeof parsedBody.mentorContextHint === "string"
-        ? parsedBody.mentorContextHint.trim()
-        : "";
+    const raw = parsedBody?.messages;
+    const incoming =
+      typeof parsedBody?.conversationId === "string" &&
+      parsedBody.conversationId.trim()
+        ? parsedBody.conversationId.trim()
+        : null;
+    const mode = typeof parsedBody?.mode === "string" ? parsedBody.mode : "mentor";
+    const mentorContextHint = normalizeContextHint(parsedBody?.mentorContextHint);
+    // Sent by the AI SDK transport: "regenerate-message" is the Mentor's Retry.
+    const isRegenerate = parsedBody?.trigger === "regenerate-message";
 
     if (!Array.isArray(raw)) {
-      return new Response(
-        JSON.stringify({ error: "Messages must be an array" }),
-        { status: 400 }
-      );
+      return jsonError(400, "INVALID_REQUEST", "Messages must be an array.");
     }
 
-    if (raw.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "At least one message is required" }),
-        { status: 400 }
+    const normalized = sanitizeIncomingMessages(raw);
+
+    if (normalized.length === 0 || normalized[normalized.length - 1].role !== "user") {
+      return jsonError(
+        400,
+        "INVALID_REQUEST",
+        "The last message must be a non-empty user message."
       );
     }
-
-    const normalized: UIMessage[] = raw.map((message) => {
-      const msg = message as { role?: unknown };
-
-      return {
-        role: normalizeRole(msg.role),
-        content: extractTextFromMessage(message),
-      };
-    });
 
     const supabase = createClient(req);
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // /api is public in proxy.ts, so the route must authenticate itself:
+    // never spend model budget or read context for anonymous callers.
+    if (!user) {
+      return jsonError(401, "UNAUTHORIZED", "Sign in to talk to your mentor.");
+    }
+
+    if (incoming) {
+      const { data: ownedConversation } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("id", incoming)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!ownedConversation) {
+        return jsonError(404, "NOT_FOUND", "Conversation not found.");
+      }
+
+      // The server is the only writer of chat turns. Stored before the usage
+      // check so a founder who hits the daily limit keeps their question.
+      await persistUserTurn(
+        supabase,
+        incoming,
+        normalized[normalized.length - 1].content,
+        { isRegenerate }
+      );
+    }
 
     let founderContext = "No founder context yet.";
     let memoryContext = "No relevant memory yet.";
@@ -810,7 +834,7 @@ export async function POST(req: Request) {
     let mentorContextPrompt =
       "Business memory context is currently unavailable. Use only verified conversation details and state assumptions.";
     let isPremium = false;
-    let conversationId = incoming ?? null;
+    const conversationId = incoming;
 
     const sharedInsightContext = "No shared intelligence insights available.";
 
@@ -887,21 +911,10 @@ export async function POST(req: Request) {
             ? "Board Reviews are limited on the free plan. Upgrade to unlock more strategic escalations."
             : "You've used today's free Prospra prompts. Upgrade to keep the inspiration flowing!";
 
-        return new Response(message, { status: 429 });
+        return jsonError(429, "USAGE_LIMIT", message);
       }
 
       await incrementUsageCounter(supabase, user.id, usageCheck.profile);
-
-      if (!conversationId) {
-        const title = await generateConversationTitle(lastUserMessage);
-        const { data: conv } = await supabase
-          .from("conversations")
-          .insert({ user_id: user.id, title })
-          .select("id")
-          .single();
-
-        conversationId = (conv as { id?: string } | null)?.id ?? null;
-      }
 
       if (conversationId) {
         const { data: actionPlan } = await supabase
@@ -974,7 +987,22 @@ export async function POST(req: Request) {
         ...(latestUserMessage ? [latestUserMessage] : []),
       ],
       temperature: isPremium ? 0.9 : 0.6,
-      onFinish: async ({ text }: { text?: string }) => {
+      onError: ({ error }) => {
+        // Failed generations are never persisted; the client offers Retry.
+        console.error("[MENTOR_STREAM_ERROR]", error);
+      },
+      onFinish: async ({ text, finishReason }) => {
+        if (conversationId && finishReason !== "error" && text.trim()) {
+          try {
+            await persistAssistantTurn(supabase, conversationId, text, {
+              replacePreviousReply: isRegenerate,
+              answeringUserTurn: lastUserMessage,
+            });
+          } catch (err) {
+            console.error("[MENTOR_ASSISTANT_PERSIST_ERROR]", err);
+          }
+        }
+
         try {
           if (user && text) {
             const extracted = await extractMemories(
@@ -995,6 +1023,10 @@ export async function POST(req: Request) {
       },
     });
 
+    // Keep generating (and persisting) even if the browser disconnects or the
+    // founder switches conversations; after() keeps the function alive.
+    after(Promise.resolve(result.consumeStream()));
+
     return result.toUIMessageStreamResponse();
   } catch (err: unknown) {
     try {
@@ -1007,12 +1039,11 @@ export async function POST(req: Request) {
 
     console.error("CHAT ROUTE ERROR:", err);
 
-    return new Response(
-      JSON.stringify({
-        error: "CHAT_ERROR",
-        message: err instanceof Error ? err.message : String(err),
-      }),
-      { status: 500 }
+    // Internal details stay in server logs.
+    return jsonError(
+      500,
+      "CHAT_ERROR",
+      "The mentor is unavailable right now. Please try again."
     );
   }
 }
