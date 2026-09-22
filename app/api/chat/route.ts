@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getWebsiteBrainContext } from "@/lib/website-brain/retrieve";
 import { getBillingProfile } from "@/lib/identity/profile";
 import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
+import { getSharedAuthCookieOptions } from "@/lib/supabase/shared-auth-cookie";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { buildMentorContext } from "@/lib/mentor/build-mentor-context";
@@ -164,6 +165,9 @@ function createClient(request: Request): AppSupabaseClient {
   const { url, anonKey } = getSupabaseProjectConfig();
 
   return createServerClient(url, anonKey, {
+    // The session lives in the shared entrepreneuria.io cookie, not the
+    // default sb-<ref>-auth-token; without this every request is anonymous.
+    cookieOptions: getSharedAuthCookieOptions(),
     cookies: {
       getAll() {
         return parseCookieHeader(request.headers.get("cookie"));
@@ -796,11 +800,17 @@ export async function POST(req: Request) {
     const supabase = createClient(req);
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
     // /api is public in proxy.ts, so the route must authenticate itself:
     // never spend model budget or read context for anonymous callers.
     if (!user) {
+      console.warn("[MENTOR_CHAT_UNAUTHORIZED]", {
+        mode,
+        hasCookieHeader: Boolean(req.headers.get("cookie")),
+        authError: authError?.name ?? null,
+      });
       return jsonError(401, "UNAUTHORIZED", "Sign in to talk to your mentor.");
     }
 

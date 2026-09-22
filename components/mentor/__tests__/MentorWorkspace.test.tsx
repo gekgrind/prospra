@@ -250,6 +250,15 @@ describe("MentorWorkspace", () => {
     expect(chat.sendMessage).not.toHaveBeenCalled();
   });
 
+  it("hides the Mentor Mode picker for launch and sends the default mode", async () => {
+    await renderWorkspace();
+    expect(screen.queryByRole("button", { name: /Change mode/ })).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Message your mentor"), "Quick question{Enter}");
+    await waitFor(() => expect(chat.sendMessage).toHaveBeenCalledTimes(1));
+    expect(chat.sendMessage.mock.calls[0][1].body).toMatchObject({ mode: "mentor" });
+  });
+
   it("sends, thinks and streams, leaving persistence to the server", async () => {
     await renderWorkspace();
     const box = screen.getByLabelText("Message your mentor");

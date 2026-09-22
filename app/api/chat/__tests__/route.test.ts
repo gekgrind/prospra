@@ -16,10 +16,19 @@ const state = vi.hoisted(() => ({
   streamCalls: [] as StreamOptions[],
   consumeStream: null as null | ReturnType<typeof vi.fn>,
   after: null as null | ReturnType<typeof vi.fn>,
+  clientOptions: null as null | SupabaseClientOptions,
 }));
 
+type SupabaseClientOptions = {
+  cookieOptions?: { name?: string };
+  cookies: { getAll: () => Array<{ name: string; value: string }> };
+};
+
 vi.mock("@supabase/ssr", () => ({
-  createServerClient: () => state.fake!.client,
+  createServerClient: (_url: string, _key: string, options: SupabaseClientOptions) => {
+    state.clientOptions = options;
+    return state.fake!.client;
+  },
 }));
 
 vi.mock("next/server", () => ({
@@ -42,6 +51,7 @@ vi.mock("@/lib/website-brain/retrieve", () => ({ getWebsiteBrainContext: async (
 vi.mock("@/lib/identity/profile", () => ({ getBillingProfile: async () => null }));
 vi.mock("@/lib/config/ecosystem", () => ({
   getSupabaseProjectConfig: () => ({ url: "http://localhost", anonKey: "anon" }),
+  getEcosystemCookieDomain: () => ".entrepreneuria.io",
 }));
 vi.mock("@/lib/analytics/server", () => ({ trackServerEvent: async () => {} }));
 vi.mock("@/lib/mentor/build-mentor-context", () => ({ buildMentorContext: async () => ({}) }));
@@ -284,5 +294,53 @@ describe("POST /api/chat — server-side persistence", () => {
     expect(messageWrites()).toHaveLength(0);
     expect(conversationInserts()).toHaveLength(0);
     expect(state.streamCalls[0].messages[0].content).toContain("AI Success Coach");
+  });
+});
+
+describe("POST /api/chat — shared ecosystem auth cookie", () => {
+  // Mirrors @supabase/ssr: the session is read from the cookie named by
+  // cookieOptions.name (possibly chunked as name.0, name.1, ...), falling back
+  // to the default sb-<project-ref>-auth-token when no name is configured.
+  function useCookieBackedAuth() {
+    const user = state.fake!.state.user;
+    state.fake!.client.auth.getUser = async () => {
+      const storageKey = state.clientOptions?.cookieOptions?.name ?? "sb-localhost-auth-token";
+      const hasSession = state.clientOptions!.cookies
+        .getAll()
+        .some((c) => c.name === storageKey || c.name.startsWith(`${storageKey}.`));
+      return { data: { user: hasSession ? user : null } };
+    };
+  }
+
+  function signedInRequest(body: unknown) {
+    return new Request("http://localhost/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: "entrepreneuria-auth-token.0=base64-abc; entrepreneuria-auth-token.1=def",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("authenticates a founder signed in through the shared entrepreneuria.io session", async () => {
+    useCookieBackedAuth();
+    const res = await POST(signedInRequest(ask("What should I price at?")));
+
+    expect(res.status).toBe(200);
+    expect(state.streamCalls).toHaveLength(1);
+    expect(messageWrites()).toEqual([
+      expect.objectContaining({ op: "insert", rows: [expect.objectContaining({ role: "user" })] }),
+    ]);
+  });
+
+  it("authenticates Success Coach requests through the shared session", async () => {
+    useCookieBackedAuth();
+    const res = await POST(
+      signedInRequest({ mode: "success-coach", messages: [turn("user", "Plan my week")] })
+    );
+
+    expect(res.status).toBe(200);
+    expect(state.streamCalls).toHaveLength(1);
   });
 });

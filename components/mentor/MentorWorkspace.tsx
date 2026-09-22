@@ -89,6 +89,13 @@ function sanitizeActionPlanTasks(value: unknown): ActionPlanTask[] {
     .filter((task): task is ActionPlanTask => task !== null);
 }
 
+/**
+ * Hidden for launch: the specialist modes have server prompts but no test
+ * coverage yet. Requests default to "mentor"; ?mode= deep links (e.g. from
+ * Website Coach) still work.
+ */
+const SHOW_MODE_PICKER = false;
+
 /** Keep the address bar in sync so a reload restores the open conversation. */
 function syncConversationUrl(conversationId: string | null) {
   if (typeof window === "undefined") return;
@@ -914,7 +921,9 @@ export function MentorWorkspace() {
       placeholder={isWelcome ? "Ask anything about your business…" : "Reply to your mentor…"}
       hint="Press Enter to send and Shift+Enter for a new line."
       leading={
-        <MentorModePicker mode={mode} onModeChange={setMode} isPremiumUser={isPremiumUser} />
+        SHOW_MODE_PICKER ? (
+          <MentorModePicker mode={mode} onModeChange={setMode} isPremiumUser={isPremiumUser} />
+        ) : undefined
       }
     />
   );
