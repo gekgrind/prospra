@@ -9,12 +9,14 @@ import {
   normalizeMessages,
 } from "@/lib/mentor/conversationOutputs";
 import { syncStrategicState } from "@/lib/mentor/sync-strategic-state";
+import { getSharedAuthCookieOptions } from "@/lib/supabase/shared-auth-cookie";
 
 function createClient(request: Request) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: getSharedAuthCookieOptions(),
       cookies: {
         get(name: string) {
           try {
