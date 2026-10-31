@@ -3,8 +3,9 @@
 //   - /auth/v1/user checks the bearer against the access tokens it issued;
 //   - /auth/v1/token?grant_type=refresh_token rotates a refresh token exactly
 //     once and reports `refresh_token_already_used` on any reuse;
-//   - /rest/v1/<table> answers generic rows owned by the token's user and
-//     records each call so a test can see whose data was asked for.
+//   - /rest/v1/<table> serves in-memory tables holding two founders' rows,
+//     honours eq/in filters, applies writes, and records every call (filters
+//     and write bodies) so a test can see whose data a handler touched.
 
 import { createChunks, stringToBase64URL } from "@supabase/ssr";
 
@@ -27,8 +28,12 @@ export type RestCall = {
   method: string;
   table: string;
   search: string;
+  filters: Array<{ column: string; values: string[] }>;
+  body: Array<Record<string, unknown>>;
   accessToken: string | null;
 };
+
+type Row = Record<string, unknown>;
 
 function jwt(payload: Record<string, unknown>) {
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -42,22 +47,58 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const OBJECT_ROWS: Record<string, (userId: string) => Record<string, unknown>> = {
-  profiles: (userId) => ({
-    id: userId,
-    full_name: "Test Founder",
+export const OTHER_USER_ID = "user-2";
+
+/** Two founders' data, so a handler that selects the wrong one gets caught. */
+function seedTables(): Record<string, Row[]> {
+  const profile = (id: string, name: string) => ({
+    id,
+    full_name: name,
     is_premium: true,
     plan_tier: "pro",
     onboarding_complete: false,
     onboarding_responses: {},
     onboarding_step: 1,
-  }),
-  conversations: (userId) => ({ id: "conv-1", user_id: userId, title: "Pricing" }),
-};
+  });
 
-const LIST_ROWS: Record<string, (userId: string) => Array<Record<string, unknown>>> = {
-  messages: () => [{ role: "user", content: "How should I price this?" }],
-};
+  return {
+    profiles: [profile("user-1", "Test Founder"), profile(OTHER_USER_ID, "Someone Else")],
+    conversations: [
+      { id: "conv-1", user_id: "user-1", title: "Pricing" },
+      { id: "conv-other", user_id: OTHER_USER_ID, title: "Not yours" },
+    ],
+    messages: [
+      { id: "m-1", conversation_id: "conv-1", role: "user", content: "How should I price this?", created_at: "2026-10-01T00:00:00Z" },
+      { id: "m-2", conversation_id: "conv-1", role: "assistant", content: "Start from the value delivered.", created_at: "2026-10-01T00:01:00Z" },
+      { id: "m-3", conversation_id: "conv-other", role: "user", content: "Private", created_at: "2026-10-01T00:00:00Z" },
+    ],
+    conversation_outputs: [
+      { conversation_id: "conv-1", user_id: "user-1", summary: "Saved summary", insights: [], action_plan: [] },
+      { conversation_id: "conv-other", user_id: OTHER_USER_ID, summary: "Private summary", insights: [], action_plan: [] },
+    ],
+  };
+}
+
+const CONTROL_PARAMS = new Set(["select", "order", "limit", "offset", "on_conflict", "columns"]);
+
+function parseFilters(url: URL) {
+  const filters: Array<{ column: string; values: string[] }> = [];
+
+  for (const [column, raw] of url.searchParams) {
+    if (CONTROL_PARAMS.has(column)) continue;
+
+    const eq = raw.match(/^eq\.(.*)$/);
+    const inList = raw.match(/^in\.\((.*)\)$/);
+    if (eq) filters.push({ column, values: [eq[1]] });
+    else if (inList) filters.push({ column, values: inList[1].split(",").map((v) => v.replace(/^"|"$/g, "")) });
+  }
+
+  return filters;
+}
+
+function matches(row: Row, filters: Array<{ column: string; values: string[] }>) {
+  return filters.every(({ column, values }) => values.includes(String(row[column])));
+}
 
 export function createFakeSupabaseApi() {
   let counter = 0;
@@ -65,6 +106,7 @@ export function createFakeSupabaseApi() {
   const liveRefreshTokens = new Map<string, User>();
   const spentRefreshTokens = new Set<string>();
 
+  const tables = seedTables();
   const calls = {
     tokenRefreshes: [] as string[],
     userLookups: [] as Array<string | null>,
@@ -134,31 +176,58 @@ export function createFakeSupabaseApi() {
       return json(issue(user));
     }
 
+    if (url.pathname.startsWith("/rest/v1/rpc/")) {
+      return json(null);
+    }
+
     if (url.pathname.startsWith("/rest/v1/")) {
       const table = url.pathname.slice("/rest/v1/".length);
       const token = bearer(request);
-      calls.rest.push({ method: request.method, table, search: url.search, accessToken: token });
+      const filters = parseFilters(url);
+      const text = request.method === "GET" || request.method === "HEAD" ? "" : await request.text();
+      const parsed = text ? (JSON.parse(text) as Row | Row[]) : [];
+      const body = Array.isArray(parsed) ? parsed : [parsed];
+      calls.rest.push({ method: request.method, table, search: url.search, filters, body, accessToken: token });
 
-      // Row-level security, roughly: no valid user token, no rows.
-      const user = userFor(token);
+      // A request without a valid user token sees nothing, like RLS would.
+      if (!userFor(token)) {
+        return json({ code: "42501", message: "permission denied" }, 401);
+      }
+
+      const rows = (tables[table] ??= []);
       const wantsObject = (request.headers.get("accept") ?? "").includes("vnd.pgrst.object");
+      const wantsRows = (request.headers.get("prefer") ?? "").includes("return=representation");
+      let result: Row[];
 
-      if (!user) {
-        return wantsObject
-          ? json({ code: "PGRST116", message: "no rows" }, 406)
-          : json([]);
+      if (request.method === "GET") {
+        result = rows.filter((row) => matches(row, filters));
+        const limit = Number(url.searchParams.get("limit"));
+        if (limit > 0) result = result.slice(0, limit);
+      } else if (request.method === "POST") {
+        const key = url.searchParams.get("on_conflict");
+        result = body.map((incoming) => {
+          const existing = key ? rows.find((row) => row[key] === incoming[key]) : undefined;
+          if (existing) return Object.assign(existing, incoming);
+          const row = { id: `${table}-${rows.length + 1}`, ...incoming };
+          rows.push(row);
+          return row;
+        });
+      } else if (request.method === "PATCH") {
+        result = rows.filter((row) => matches(row, filters)).map((row) => Object.assign(row, body[0]));
+      } else if (request.method === "DELETE") {
+        result = rows.filter((row) => matches(row, filters));
+        tables[table] = rows.filter((row) => !result.includes(row));
+      } else {
+        result = [];
       }
 
       if (wantsObject) {
-        const row = OBJECT_ROWS[table]?.(user.id) ?? { id: `${table}-1`, user_id: user.id };
-        return json(row);
+        return result.length === 1
+          ? json(result[0])
+          : json({ code: "PGRST116", message: `${result.length} rows` }, 406);
       }
 
-      if (request.method === "GET") {
-        return json(LIST_ROWS[table]?.(user.id) ?? []);
-      }
-
-      return new Response(null, { status: 204 });
+      return request.method === "GET" || wantsRows ? json(result) : new Response(null, { status: 204 });
     }
 
     return json({ msg: `fake supabase: unhandled ${request.method} ${url.pathname}` }, 404);
@@ -167,7 +236,7 @@ export function createFakeSupabaseApi() {
   const fetch = async (input: RequestInfo | URL, init?: RequestInit) =>
     handle(input instanceof Request ? input : new Request(input, init));
 
-  return { issue, handle, fetch, calls };
+  return { issue, handle, fetch, calls, tables };
 }
 
 export function makeUser(id: string, padding = 0): User {

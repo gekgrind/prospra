@@ -18,21 +18,25 @@ import { createClient } from "@/lib/supabase/server";
 import { createCookieJar, type CookieJar } from "@/lib/supabase/__tests__/cookie-jar";
 import {
   LEGACY_COOKIE,
+  OTHER_USER_ID,
   SHARED_COOKIE,
   SUPABASE_URL,
   createFakeSupabaseApi,
   makeUser,
   sessionCookieHeader,
+  type RestCall,
 } from "@/lib/supabase/__tests__/fake-supabase-api";
 
 // The seven handlers that used to build their own Supabase client. Everything
 // between the cookie and the Auth API is the real stack: lib/supabase/server.ts,
-// shared-auth-cookie.ts, lib/config/ecosystem.ts, @supabase/ssr and auth-js.
-// Only next/headers (no request scope in a unit test), the model SDKs and a
-// few context helpers are stand-ins.
+// shared-auth-cookie.ts, lib/config/ecosystem.ts, @supabase/ssr, auth-js and
+// postgrest-js. Only next/headers (no request scope in a unit test), the model
+// SDKs and a few context helpers are stand-ins.
 
 const state = vi.hoisted(() => ({
   jar: null as null | CookieJar,
+  streams: 0,
+  generations: 0,
 }));
 
 vi.mock("next/headers", () => ({ cookies: async () => state.jar }));
@@ -43,14 +47,26 @@ vi.mock("next/server", async (importOriginal) => ({
 }));
 
 vi.mock("ai", () => ({
-  streamText: () => ({
-    toUIMessageStreamResponse: () => new Response("stream", { status: 200 }),
-    consumeStream: () => Promise.resolve(),
-  }),
+  streamText: () => {
+    state.streams += 1;
+    return {
+      toUIMessageStreamResponse: () => new Response("stream", { status: 200 }),
+      consumeStream: () => Promise.resolve(),
+    };
+  },
   generateText: async () => ({ text: "[]" }),
-  generateObject: async () => ({
-    object: { summary: "Summary", insights: [], action_plan: [] },
-  }),
+  generateObject: async () => {
+    state.generations += 1;
+    return {
+      object: {
+        summary: "Price from value.",
+        insights: ["Anchor on outcomes", "Test two tiers", "Talk to five buyers"],
+        actionPlan: ["List outcomes", "Draft tiers", "Book calls"],
+        recommendedPriority: "Draft the two tiers",
+        riskOrBlocker: "No buyer interviews yet",
+      },
+    };
+  },
 }));
 vi.mock("@ai-sdk/openai", () => ({ openai: (model: string) => ({ model }) }));
 vi.mock("@/lib/analytics/server", () => ({ trackServerEvent: async () => {} }));
@@ -81,37 +97,79 @@ function json(method: string, path: string, body: unknown) {
   });
 }
 
+const writesTo = (table: string, method?: string) =>
+  api.calls.rest.filter((call) => call.table === table && call.method !== "GET" && (!method || call.method === method));
+
 type Endpoint = {
   label: string;
   call: () => Promise<Response>;
+  /** Proof the handler got past auth and did its real work as this founder. */
+  reached: (response: Response) => Promise<void>;
 };
 
 const ENDPOINTS: Endpoint[] = [
-  { label: "GET /api/onboarding-progress", call: () => getOnboardingProgress() },
+  {
+    label: "GET /api/onboarding-progress",
+    call: () => getOnboardingProgress(),
+    reached: async (response) => {
+      expect(await response.json()).toMatchObject({ onboarding_step: 1, onboarding_complete: false });
+    },
+  },
   {
     label: "PATCH /api/onboarding-progress",
-    call: () => patchOnboardingProgress(json("PATCH", "/api/onboarding-progress", { responses: {}, onboarding_step: 1 })),
+    call: () => patchOnboardingProgress(json("PATCH", "/api/onboarding-progress", { responses: {}, onboarding_step: 2 })),
+    reached: async () => {
+      expect(api.tables.profiles.find((row) => row.id === USER_ID)?.onboarding_step).toBe(2);
+      expect(api.tables.profiles.find((row) => row.id === OTHER_USER_ID)?.onboarding_step).toBe(1);
+    },
   },
   {
     label: "POST /api/onboarding",
     call: () => postOnboarding(json("POST", "/api/onboarding", { responses: { founder_name: "Test" } })),
+    reached: async () => {
+      expect(writesTo("profiles", "PATCH").length).toBeGreaterThan(0);
+      expect(api.tables.profiles.find((row) => row.id === OTHER_USER_ID)?.onboarding_responses).toEqual({});
+    },
   },
-  { label: "GET /api/profile/get", call: () => getProfile() },
+  {
+    label: "GET /api/profile/get",
+    call: () => getProfile(),
+    reached: async (response) => {
+      expect(await response.json()).toMatchObject({ profile: { id: USER_ID, full_name: "Test Founder" } });
+    },
+  },
   {
     label: "PATCH /api/profile",
-    call: () => patchProfile(json("PATCH", "/api/profile", { full_name: "Test Founder" })),
+    call: () => patchProfile(json("PATCH", "/api/profile", { full_name: "Renamed Founder" })),
+    reached: async (response) => {
+      expect(await response.json()).toMatchObject({ profile: { id: USER_ID, full_name: "Renamed Founder" } });
+      expect(api.tables.profiles.find((row) => row.id === OTHER_USER_ID)?.full_name).toBe("Someone Else");
+    },
   },
   {
     label: "POST /api/mentor",
     call: () => postMentor(json("POST", "/api/mentor", { conversationId: "conv-1" })),
+    reached: async () => {
+      expect(state.streams).toBe(1);
+    },
   },
   {
     label: "GET /api/mentor/conversation-outputs",
     call: () => getConversationOutputs(new NextRequest(`${APP}/api/mentor/conversation-outputs?conversationId=conv-1`)),
+    reached: async (response) => {
+      expect(await response.json()).toMatchObject({ outputs: { conversation_id: "conv-1", summary: "Saved summary" } });
+    },
   },
   {
     label: "POST /api/mentor/conversation-outputs",
     call: () => postConversationOutputs(json("POST", "/api/mentor/conversation-outputs", { conversationId: "conv-1" })),
+    reached: async () => {
+      expect(state.generations).toBe(1);
+      expect(writesTo("conversation_outputs", "POST")).toHaveLength(1);
+      expect(api.tables.conversation_outputs.find((row) => row.conversation_id === "conv-other")?.summary).toBe(
+        "Private summary"
+      );
+    },
   },
   {
     label: "POST /api/chat",
@@ -121,9 +179,13 @@ const ENDPOINTS: Endpoint[] = [
           conversationId: "conv-1",
           mode: "mentor",
           trigger: "submit-message",
-          messages: [{ role: "user", parts: [{ type: "text", text: "How should I price this?" }] }],
+          messages: [{ role: "user", parts: [{ type: "text", text: "Draft my two pricing tiers." }] }],
         })
       ),
+    reached: async () => {
+      expect(state.streams).toBe(1);
+      expect(writesTo("messages", "POST").length).toBeGreaterThan(0);
+    },
   },
 ];
 
@@ -135,6 +197,8 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_ENTREPRENEURIA_COOKIE_DOMAIN", "");
   vi.stubEnv("OPENAI_API_KEY", "test-key");
   api = createFakeSupabaseApi();
+  state.streams = 0;
+  state.generations = 0;
   vi.stubGlobal("fetch", api.fetch);
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -166,6 +230,43 @@ function readSession(jar: CookieJar) {
   };
 }
 
+/**
+ * Every query and write the handler made was about this founder's own data:
+ * no filter names the other founder or their conversation/messages, every
+ * filtered call names one of ours, and every written owner field is ours.
+ */
+function expectOnlyOwnData(calls: RestCall[]) {
+  const ownConversations = new Set(
+    api.tables.conversations.filter((row) => row.user_id === USER_ID).map((row) => String(row.id))
+  );
+  const ownMessages = new Set(
+    api.tables.messages.filter((row) => ownConversations.has(String(row.conversation_id))).map((row) => String(row.id))
+  );
+  const own = new Set([USER_ID, ...ownConversations, ...ownMessages]);
+  const foreign = new Set([
+    OTHER_USER_ID,
+    ...api.tables.conversations.filter((row) => row.user_id === OTHER_USER_ID).map((row) => String(row.id)),
+    "m-3",
+  ]);
+
+  expect(calls.length).toBeGreaterThan(0);
+  expect(calls.some((call) => call.filters.some(({ values }) => values.includes(USER_ID)))).toBe(true);
+
+  for (const call of calls) {
+    const values = call.filters.flatMap((filter) => filter.values);
+    expect(values.filter((value) => foreign.has(value)), `${call.method} ${call.table}${call.search}`).toEqual([]);
+    if (values.length > 0) {
+      expect(values.some((value) => own.has(value)), `${call.method} ${call.table}${call.search}`).toBe(true);
+    }
+
+    for (const row of call.body) {
+      if ("user_id" in row) expect(row.user_id).toBe(USER_ID);
+      if ("conversation_id" in row) expect(ownConversations.has(String(row.conversation_id))).toBe(true);
+      if (call.table === "profiles" && "id" in row) expect(row.id).toBe(USER_ID);
+    }
+  }
+}
+
 async function callWith(endpoint: Endpoint, cookieHeader: string) {
   state.jar = createCookieJar(cookieHeader);
   const response = await endpoint.call();
@@ -183,14 +284,13 @@ describe.each(ENDPOINTS)("$label on the shared entrepreneuria.io session", (endp
 
     const { response, jar } = await callWith(endpoint, header);
 
-    expect(response.status).not.toBe(401);
-    expect(response.status).toBeLessThan(500);
+    expect(response.status).toBe(200);
+    await endpoint.reached(response);
     expect(api.calls.userLookups).toContain(session.access_token);
     expect(api.calls.tokenRefreshes).toEqual([]);
     expect(sessionWrites(jar)).toEqual([]);
-    // Identity: every data call ran as this founder's token.
-    expect(api.calls.rest.length).toBeGreaterThan(0);
     expect(api.calls.rest.every((call) => call.accessToken === session.access_token)).toBe(true);
+    expectOnlyOwnData(api.calls.rest);
   });
 
   it("does not accept the legacy sb-<ref>-auth-token cookie", async () => {
@@ -199,6 +299,7 @@ describe.each(ENDPOINTS)("$label on the shared entrepreneuria.io session", (endp
 
     expect(response.status).toBe(401);
     expect(api.calls.tokenRefreshes).toEqual([]);
+    expect(api.calls.rest.filter((call) => call.method !== "GET")).toEqual([]);
   });
 
   it("saves a refreshed session onto the shared domain, for the same founder", async () => {
@@ -208,8 +309,8 @@ describe.each(ENDPOINTS)("$label on the shared entrepreneuria.io session", (endp
 
     const { response, jar } = await callWith(endpoint, header);
 
-    expect(response.status).not.toBe(401);
-    expect(response.status).toBeLessThan(500);
+    expect(response.status).toBe(200);
+    await endpoint.reached(response);
     expect(api.calls.tokenRefreshes).toEqual([expired.refresh_token]);
 
     const writes = sessionWrites(jar);
@@ -225,8 +326,8 @@ describe.each(ENDPOINTS)("$label on the shared entrepreneuria.io session", (endp
     const rotated = readSession(jar);
     expect(rotated.user.id).toBe(USER_ID);
     expect(rotated.refresh_token).not.toBe(expired.refresh_token);
-    expect(api.calls.rest.length).toBeGreaterThan(0);
     expect(api.calls.rest.every((call) => call.accessToken === rotated.access_token)).toBe(true);
+    expectOnlyOwnData(api.calls.rest);
 
     // A sibling reader on the next request picks the saved session up as-is.
     state.jar = createCookieJar(jar.toHeader());
@@ -249,17 +350,45 @@ describe.each(ENDPOINTS)("$label on the shared entrepreneuria.io session", (endp
 
     await callWith(endpoint, header);
     expect(api.calls.tokenRefreshes).toEqual([expired.refresh_token]);
+    const restCallsBeforeReplay = api.calls.rest.length;
 
     // The old cookies again, e.g. a tab that never received the Set-Cookie.
     const { response, jar } = await callWith(endpoint, header);
 
     expect(response.status).toBe(401);
     expect(api.calls.tokenRefreshes).toEqual([expired.refresh_token, expired.refresh_token]);
+    expect(api.calls.rest.slice(restCallsBeforeReplay).filter((call) => call.method !== "GET")).toEqual([]);
     const removals = sessionWrites(jar);
     expect(removals.length).toBeGreaterThan(0);
     for (const removal of removals) {
       expect(removal).toMatchObject({ value: "", options: expect.objectContaining({ maxAge: 0, domain: ".entrepreneuria.io" }) });
     }
     expect(jar.getAll().filter(({ name }) => isSharedCookie(name))).toEqual([]);
+  });
+});
+
+describe("the ownership check itself", () => {
+  it("fails a handler that filters on the other founder", () => {
+    api.issue(makeUser(USER_ID));
+    const call = (filters: RestCall["filters"], body: RestCall["body"] = []): RestCall => ({
+      method: "GET",
+      table: "profiles",
+      search: "",
+      filters,
+      body,
+      accessToken: null,
+    });
+
+    expect(() => expectOnlyOwnData([call([{ column: "id", values: [OTHER_USER_ID] }])])).toThrow();
+    expect(() =>
+      expectOnlyOwnData([call([{ column: "id", values: [USER_ID] }]), call([{ column: "id", values: ["conv-other"] }])])
+    ).toThrow();
+    expect(() =>
+      expectOnlyOwnData([
+        call([{ column: "id", values: [USER_ID] }]),
+        { ...call([]), method: "POST", table: "messages", body: [{ conversation_id: "conv-other" }] },
+      ])
+    ).toThrow();
+    expect(() => expectOnlyOwnData([call([{ column: "id", values: [USER_ID] }])])).not.toThrow();
   });
 });
