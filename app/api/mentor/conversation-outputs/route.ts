@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
@@ -9,34 +8,7 @@ import {
   normalizeMessages,
 } from "@/lib/mentor/conversationOutputs";
 import { syncStrategicState } from "@/lib/mentor/sync-strategic-state";
-import { getSharedAuthCookieOptions } from "@/lib/supabase/shared-auth-cookie";
-
-function createClient(request: Request) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookieOptions: getSharedAuthCookieOptions(),
-      cookies: {
-        get(name: string) {
-          try {
-            const raw = request.headers.get("cookie");
-            if (!raw) return undefined;
-            const entry = raw
-              .split(";")
-              .map((value) => value.trim())
-              .find((value) => value.startsWith(`${name}=`));
-
-            const parsed = entry?.slice(name.length + 1);
-            return parsed && parsed.length > 0 ? parsed : undefined;
-          } catch {
-            return undefined;
-          }
-        },
-      },
-    }
-  );
-}
+import { createClient } from "@/lib/supabase/server";
 
 function missingConfigError() {
   const missing: string[] = [];
@@ -66,7 +38,7 @@ function missingConfigError() {
   );
 }
 
-async function assertConversationOwnership(supabase: ReturnType<typeof createServerClient>, conversationId: string, userId: string) {
+async function assertConversationOwnership(supabase: Awaited<ReturnType<typeof createClient>>, conversationId: string, userId: string) {
   const { data: conversation, error } = await supabase
     .from("conversations")
     .select("id, user_id")
@@ -90,7 +62,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "conversationId is required" }, { status: 400 });
     }
 
-    const supabase = createClient(req);
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -133,7 +105,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "conversationId is required" }, { status: 400 });
     }
 
-    const supabase = createClient(req);
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

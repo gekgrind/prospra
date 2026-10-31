@@ -13,7 +13,6 @@
 
 - `lib/supabase/client.ts`
 - `lib/supabase/server.ts`
-- `lib/supabase/request-client.ts`
 - `lib/auth/redirects.ts`
 - `lib/auth/sessions.ts`
 - `lib/auth/admin.ts`

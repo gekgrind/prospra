@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
 import { ONBOARDING_SECTIONS } from "@/lib/onboarding-framework";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -46,19 +46,7 @@ function mapFounderProfile(responses: JsonRecord) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    );
+    const supabase = await createClient();
 
     const payload = (await request.json()) as Record<string, unknown>;
     const responses =

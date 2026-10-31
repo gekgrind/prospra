@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
 import { ONBOARDING_SECTIONS } from "@/lib/onboarding-framework";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -14,26 +14,6 @@ const PROGRESS_FIELDS = [
   "onboarding_complete",
   "website_url",
 ] as const;
-
-function createSupabaseServerClient(request: NextRequest) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set() {
-          // no-op in route handler
-        },
-        remove() {
-          // no-op in route handler
-        },
-      },
-    }
-  );
-}
 
 function hasTextValue(value: unknown) {
   if (Array.isArray(value)) return value.length > 0;
@@ -56,9 +36,9 @@ function buildSectionProgress(responses: JsonRecord) {
   });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const supabase = createSupabaseServerClient(request);
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -106,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const supabase = createSupabaseServerClient(request);
+    const supabase = await createClient();
 
     const {
       data: { user },

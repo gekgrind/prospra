@@ -3,12 +3,10 @@
 import { generateText, streamText } from "ai";
 import { after } from "next/server";
 import { openai } from "@ai-sdk/openai";
-import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getWebsiteBrainContext } from "@/lib/website-brain/retrieve";
 import { getBillingProfile } from "@/lib/identity/profile";
-import { getSupabaseProjectConfig } from "@/lib/config/ecosystem";
-import { getSharedAuthCookieOptions } from "@/lib/supabase/shared-auth-cookie";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { trackServerEvent } from "@/lib/analytics/server";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { buildMentorContext } from "@/lib/mentor/build-mentor-context";
@@ -80,29 +78,6 @@ function jsonError(status: number, error: string, message: string): Response {
   });
 }
 
-function parseCookieHeader(
-  raw: string | null
-): Array<{ name: string; value: string }> {
-  if (!raw) return [];
-
-  return raw
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((cookie) => {
-      const index = cookie.indexOf("=");
-
-      if (index === -1) {
-        return { name: cookie, value: "" };
-      }
-
-      return {
-        name: cookie.slice(0, index),
-        value: cookie.slice(index + 1),
-      };
-    });
-}
-
 function sanitizeTasks(input: unknown): ActionPlanTask[] {
   if (!Array.isArray(input)) return [];
 
@@ -161,29 +136,10 @@ function hasPremiumAccess(profile: ProfileRow | null | undefined): boolean {
    SUPABASE CLIENT
 ------------------------------------------------------------- */
 
-function createClient(request: Request): AppSupabaseClient {
-  const { url, anonKey } = getSupabaseProjectConfig();
-
-  return createServerClient(url, anonKey, {
-    // The session lives in the shared entrepreneuria.io cookie, not the
-    // default sb-<ref>-auth-token; without this every request is anonymous.
-    cookieOptions: getSharedAuthCookieOptions(),
-    cookies: {
-      getAll() {
-        return parseCookieHeader(request.headers.get("cookie"));
-      },
-      setAll(
-        _cookies: Array<{
-          name: string;
-          value: string;
-          options?: Record<string, unknown>;
-        }>
-      ) {
-        void _cookies;
-        // No-op in this route handler.
-      },
-    },
-  }) as unknown as SupabaseClient;
+// The route-capable factory: it reads the shared entrepreneuria.io cookie and,
+// because /api is outside proxy.ts, is the only place a refresh can be saved.
+async function createClient(): Promise<AppSupabaseClient> {
+  return (await createServerSupabaseClient()) as unknown as SupabaseClient;
 }
 
 /* -------------------------------------------------------------
@@ -797,7 +753,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = createClient(req);
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
