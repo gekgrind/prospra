@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // vi.mock calls below are hoisted above these imports.
 import { POST } from "@/app/api/chat/route";
 import { createFakeSupabase } from "@/lib/mentor/__tests__/fake-supabase";
+import { createCookieJar, type CookieJar } from "@/lib/supabase/__tests__/cookie-jar";
 
 type StreamOptions = {
   messages: Array<{ role: string; content: string }>;
@@ -17,6 +18,7 @@ const state = vi.hoisted(() => ({
   consumeStream: null as null | ReturnType<typeof vi.fn>,
   after: null as null | ReturnType<typeof vi.fn>,
   clientOptions: null as null | SupabaseClientOptions,
+  jar: null as null | CookieJar,
 }));
 
 type SupabaseClientOptions = {
@@ -30,6 +32,9 @@ vi.mock("@supabase/ssr", () => ({
     return state.fake!.client;
   },
 }));
+
+// The route reads its session through lib/supabase/server.ts, i.e. cookies().
+vi.mock("next/headers", () => ({ cookies: async () => state.jar }));
 
 vi.mock("next/server", () => ({
   after: (task: unknown) => state.after!(task),
@@ -60,6 +65,7 @@ vi.mock("@/lib/mentor/build-mentor-system-prompt", () => ({
 }));
 
 function request(body: unknown, raw = false) {
+  state.jar = createCookieJar();
   return new Request("http://localhost/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -313,6 +319,7 @@ describe("POST /api/chat — shared ecosystem auth cookie", () => {
   }
 
   function signedInRequest(body: unknown) {
+    state.jar = createCookieJar("entrepreneuria-auth-token.0=base64-abc; entrepreneuria-auth-token.1=def");
     return new Request("http://localhost/api/chat", {
       method: "POST",
       headers: {

@@ -4,16 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // vi.mock calls below are hoisted above these imports.
 import { GET, POST } from "@/app/api/mentor/conversation-outputs/route";
 import { createFakeSupabase } from "@/lib/mentor/__tests__/fake-supabase";
+import { createCookieJar, type CookieJar } from "@/lib/supabase/__tests__/cookie-jar";
 
 type SupabaseClientOptions = {
   cookieOptions?: { name?: string };
-  cookies: { get: (name: string) => string | undefined };
+  cookies: { getAll: () => Array<{ name: string; value: string }> };
 };
 
 const state = vi.hoisted(() => ({
   fake: null as null | ReturnType<typeof import("@/lib/mentor/__tests__/fake-supabase").createFakeSupabase>,
   clientOptions: null as null | SupabaseClientOptions,
+  jar: null as null | CookieJar,
 }));
+
+// The route reads its session through lib/supabase/server.ts, i.e. cookies().
+vi.mock("next/headers", () => ({ cookies: async () => state.jar }));
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: (_url: string, _key: string, options: SupabaseClientOptions) => {
@@ -30,25 +35,28 @@ vi.mock("ai", () => ({
 vi.mock("@ai-sdk/openai", () => ({ openai: (model: string) => ({ model }) }));
 vi.mock("@/lib/mentor/sync-strategic-state", () => ({ syncStrategicState: async () => {} }));
 vi.mock("@/lib/config/ecosystem", () => ({
+  getSupabaseProjectConfig: () => ({ url: "http://localhost", anonKey: "anon" }),
   getEcosystemCookieDomain: () => ".entrepreneuria.io",
 }));
 
 const SHARED_COOKIE = "entrepreneuria-auth-token.0=base64-abc; entrepreneuria-auth-token.1=def";
 
-// Mirrors @supabase/ssr's `get` cookie adapter: the session is read from the
+// Mirrors @supabase/ssr's `getAll` cookie adapter: the session is read from the
 // cookie named by cookieOptions.name (possibly chunked as name.0, name.1, ...),
 // falling back to the default sb-<project-ref>-auth-token when no name is set.
 function useCookieBackedAuth() {
   const user = { id: "user-1", user_metadata: {} };
   state.fake!.client.auth.getUser = async () => {
     const storageKey = state.clientOptions?.cookieOptions?.name ?? "sb-localhost-auth-token";
-    const { get } = state.clientOptions!.cookies;
-    const hasSession = Boolean(get(storageKey) ?? get(`${storageKey}.0`));
+    const hasSession = state.clientOptions!.cookies
+      .getAll()
+      .some((c) => c.name === storageKey || c.name.startsWith(`${storageKey}.`));
     return { data: { user: hasSession ? user : null } };
   };
 }
 
 function getRequest(conversationId: string, cookie?: string) {
+  state.jar = createCookieJar(cookie);
   return new Request(
     `http://localhost/api/mentor/conversation-outputs?conversationId=${conversationId}`,
     { headers: cookie ? { cookie } : {} }
@@ -56,6 +64,7 @@ function getRequest(conversationId: string, cookie?: string) {
 }
 
 function postRequest(conversationId: string, cookie?: string) {
+  state.jar = createCookieJar(cookie);
   return new Request("http://localhost/api/mentor/conversation-outputs", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}) },

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createRequestSupabaseClient } from "@/lib/supabase/request-client";
+import { createClient } from "@/lib/supabase/server";
 import { SHARED_PROFILE_SELECT } from "@/lib/identity/profile";
 
 export async function PATCH(request: Request) {
-  const supabase = createRequestSupabaseClient(request);
+  const supabase = await createClient();
 
   const {
     data: { user },

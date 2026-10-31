@@ -2,7 +2,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
 
 // Brain modules
 import { FIXED_RULES } from "@/lib/brain/fixed-rules";
@@ -33,49 +33,6 @@ const payloadSchema = z.object({
     .optional()
     .default({}),
 });
-
-function parseCookieHeader(
-  raw: string | null
-): Array<{ name: string; value: string }> {
-  if (!raw) return [];
-
-  return raw
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((cookie) => {
-      const index = cookie.indexOf("=");
-
-      if (index === -1) {
-        return { name: cookie, value: "" };
-      }
-
-      return {
-        name: cookie.slice(0, index),
-        value: cookie.slice(index + 1),
-      };
-    });
-}
-
-function createClient(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("Missing Supabase environment variables.");
-  }
-
-  return createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return parseCookieHeader(request.headers.get("cookie"));
-      },
-      setAll() {
-        // No-op in this route handler
-      },
-    },
-  });
-}
 
 function formatConversationForModel(messages: StoredMessage[]) {
   return messages.map((message) => ({
@@ -191,7 +148,7 @@ export async function POST(request: Request) {
 
     const { conversationId, mode, profile } = parsed.data;
 
-    const supabase = createClient(request);
+    const supabase = await createClient();
 
     const {
       data: { user },
